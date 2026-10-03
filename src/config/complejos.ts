@@ -14,7 +14,8 @@ export interface Complejo {
   estilo: 'nodo'            // diseño de la imagen
 }
 
-const HORARIOS = ['10:00', '11:30', '13:00', '14:30', '16:00', '17:30', '19:00', '20:30', '22:00', '23:30']
+// Siempre HH:MM con cero adelante ('07:30', no '7:30'): la base valida ese formato y ordena como texto.
+const HORARIOS = ['07:30', '09:00', '10:30', '12:00', '13:30', '15:00', '16:30', '18:00', '19:30', '21:00']
 
 export const COMPLEJOS: Complejo[] = [
   {
