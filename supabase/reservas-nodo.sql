@@ -12,8 +12,12 @@
 --     reservas_nodo_login). La contraseña se guarda hasheada con bcrypt.
 --   * El usuario se crea aparte, con crear-usuario-nodo.sql (no se sube al repo).
 --
--- Rango de fechas: se ve y se carga desde hoy - 90 días hasta hoy + 60 días.
--- Si cambiás estos valores, cambiá también src/config/limites.ts.
+-- Rango de fechas:
+--   * Se ve el historial de los últimos 90 días (lo anterior se borra solo).
+--   * Solo se puede reservar/cancelar desde HOY hasta el último día del mes próximo.
+--     Los días anteriores a hoy son de solo lectura.
+--   * Los turnos fijos se reservan solos hasta el último día del mes próximo.
+-- Si cambiás estas reglas, cambiá también src/config/limites.ts.
 -- =====================================================================
 
 create extension if not exists pgcrypto with schema extensions;
@@ -119,12 +123,15 @@ create policy "reservas_nodo_fijos lectura publica"
 create or replace function public.reservas_nodo__dias_historia()
 returns int language sql immutable as $$ select 90 $$;
 
-create or replace function public.reservas_nodo__dias_adelante()
-returns int language sql immutable as $$ select 60 $$;
-
 create or replace function public.reservas_nodo__hoy()
 returns date language sql stable as $$
   select (now() at time zone 'America/Argentina/Buenos_Aires')::date
+$$;
+
+-- Último día que se puede reservar: el último día del mes próximo (hora argentina)
+create or replace function public.reservas_nodo__fecha_maxima()
+returns date language sql stable as $$
+  select (date_trunc('month', public.reservas_nodo__hoy()) + interval '2 months' - interval '1 day')::date
 $$;
 
 -- true si el turno (fecha, hora) todavía no empezó, en hora argentina
@@ -165,7 +172,7 @@ set search_path = public
 as $$
 declare
   v_hoy date := public.reservas_nodo__hoy();
-  v_fin date := v_hoy + public.reservas_nodo__dias_adelante();
+  v_fin date := public.reservas_nodo__fecha_maxima();
   v_n   int;
 begin
   insert into public.reservas_nodo_turnos
@@ -313,9 +320,11 @@ declare
   v_fijo   uuid;
   v_fila   public.reservas_nodo_turnos;
 begin
-  if p_fecha < v_hoy - public.reservas_nodo__dias_historia()
-     or p_fecha > v_hoy + public.reservas_nodo__dias_adelante() then
-    raise exception 'Esa fecha está fuera del rango que se puede cargar.' using errcode = '22023';
+  if p_fecha < v_hoy then
+    raise exception 'Solo se puede reservar/cancelar turnos del día o posteriores.' using errcode = '22023';
+  end if;
+  if p_fecha > public.reservas_nodo__fecha_maxima() then
+    raise exception 'Solo se puede reservar hasta el último día del mes próximo.' using errcode = '22023';
   end if;
   if p_estado = 'reservada' and v_para is null then
     raise exception 'Indicá para quién es la reserva.' using errcode = '22023';
@@ -484,7 +493,7 @@ set search_path = public
 as $$
   with ventana as (
     select public.reservas_nodo__hoy() as hoy,
-           public.reservas_nodo__hoy() + public.reservas_nodo__dias_adelante() as fin
+           public.reservas_nodo__fecha_maxima() as fin
   ),
   dias as (
     select g::date as fecha
@@ -610,7 +619,7 @@ $$;
 -- Permisos
 -- ---------------------------------------------------------------------
 revoke all on function public.reservas_nodo__dias_historia()                  from public;
-revoke all on function public.reservas_nodo__dias_adelante()                  from public;
+revoke all on function public.reservas_nodo__fecha_maxima()                  from public;
 revoke all on function public.reservas_nodo__hoy()                            from public;
 revoke all on function public.reservas_nodo__futuro(date, text)               from public;
 revoke all on function public.reservas_nodo__sesion(uuid)                     from public;

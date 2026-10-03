@@ -31,15 +31,19 @@ Los nombres de tablas y funciones que usa el front están todos en `src/config/d
 
 ## Turnos fijos
 
-Cada fijo se materializa como reservas reales en `reservas_nodo_turnos` (columna `fijo_id`) para los próximos
-60 días; nunca pisa un turno ya reservado. La app llama a `reservas_nodo_fijos_sincronizar()` al abrir para correr
-la ventana. Si querés que pase aunque nadie abra la app, programalo con pg_cron (comentado al final del script).
+Cada fijo se materializa como reservas reales en `reservas_nodo_turnos` (columna `fijo_id`) hasta el último día del
+mes próximo; nunca pisa un turno ya reservado. La app llama a `reservas_nodo_fijos_sincronizar()` al abrir, y así la
+ventana se corre sola (el día 1 de cada mes se suma un mes). Si querés que pase aunque nadie abra la app, programalo con
+pg_cron (comentado al final del script).
 
-## Rango de fechas y limpieza
+## Fechas
 
-Se pueden ver y cargar turnos desde hoy - 90 días hasta hoy + 60 días. Lo más viejo que 90 días se borra solo
-cada vez que alguien cambia un turno. Para cambiar el rango, editá los dos lugares:
-`src/config/limites.ts` (la app) y `reservas_nodo__dias_historia()` / `__dias_adelante()` en el script (la base).
+- **Reservar / cancelar**: desde hoy hasta el último día del mes próximo.
+- **Días anteriores a hoy**: solo consulta. La app avisa "Solo se puede reservar/cancelar turnos del día o posteriores." y la base rechaza cualquier cambio.
+- **Historial**: se ven los últimos 90 días; lo más viejo se borra solo cada vez que alguien cambia un turno.
+
+Las reglas están en dos lugares: `src/config/limites.ts` (la app) y `reservas_nodo__dias_historia()` /
+`reservas_nodo__fecha_maxima()` en el script (la base).
 
 ## Cambiar canchas, horarios o teléfonos
 
