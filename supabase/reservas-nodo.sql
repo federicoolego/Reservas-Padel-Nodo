@@ -268,9 +268,8 @@ begin
     raise exception 'Usuario o contraseña incorrectos' using errcode = '28P01';
   end if;
 
-  if v_nombre is null then
-    raise exception 'Poné tu nombre: queda registrado en cada turno que cambies.' using errcode = '22023';
-  end if;
+  -- El nombre es opcional: la app lo pide solo si hay reservas manuales (reservasManuales en
+  -- src/config/complejos.ts). Sin nombre, en los cambios queda registrado el usuario.
 
   delete from public.reservas_nodo_sesiones where expira < now();
 

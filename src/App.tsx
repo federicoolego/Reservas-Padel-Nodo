@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { COMPLEJOS, complejoPorId, type ComplejoId } from './config/complejos'
+import { COMPLEJOS, complejoPorId, PIDE_NOMBRE, type ComplejoId } from './config/complejos'
 import { configFaltante } from './lib/supabase'
 import { leerSesion, olvidarSesion, salir, sesionVigente, type Sesion } from './lib/sesion'
 import { hoyISO } from './lib/fechas'
@@ -21,10 +21,10 @@ type Pestana = 'turnos' | 'fijos' | 'imagen'
 const VISTA_INICIAL: { complejo: ComplejoId; pestana: Pestana } = { complejo: COMPLEJOS[0].id, pestana: 'turnos' }
 
 export default function App() {
-  // Las sesiones sin nombre (anteriores a que fuera obligatorio) vuelven a pedir login
+  // Si el login pide nombre, las sesiones sin nombre (anteriores a que fuera obligatorio) vuelven a pedir login
   const [sesion, setSesion] = useState<Sesion | null>(() => {
     const s = leerSesion()
-    if (s && !s.nombre) {
+    if (s && !s.nombre && PIDE_NOMBRE) {
       olvidarSesion()
       return null
     }

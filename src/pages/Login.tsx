@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ingresar, type Sesion } from '../lib/sesion'
 import { logoUrl } from '../lib/marca'
+import { PIDE_NOMBRE } from '../config/complejos'
 
 export default function Login({ alIngresar }: { alIngresar: (s: Sesion) => void }) {
   const [usuario, setUsuario] = useState('')
@@ -12,7 +13,7 @@ export default function Login({ alIngresar }: { alIngresar: (s: Sesion) => void 
   async function enviar(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!nombre.trim()) {
+    if (PIDE_NOMBRE && !nombre.trim()) {
       setError('Poné tu nombre: queda registrado en cada turno que cambies.')
       return
     }
@@ -46,12 +47,12 @@ export default function Login({ alIngresar }: { alIngresar: (s: Sesion) => void 
           <input className={`${campo} mt-1`} type="password" value={clave} onChange={(e) => setClave(e.target.value)}
             autoComplete="current-password" required />
         </label>
-        <label className="block">
+        {PIDE_NOMBRE && <label className="block">
           <span className="text-sm font-semibold">Tu nombre</span>
           <input className={`${campo} mt-1`} value={nombre} onChange={(e) => setNombre(e.target.value)}
-            maxLength={30} placeholder="Ej: Jime" autoComplete="given-name" required />
+            maxLength={30} placeholder="Ej: Uma" autoComplete="given-name" required />
           <span className="mt-1 block text-xs text-tinta">Queda registrado en cada turno que cambies.</span>
-        </label>
+        </label>}
         {error && <p className="rounded-lg bg-rojo/10 px-3 py-2 text-sm font-medium text-rojo">{error}</p>}
         <button type="submit" disabled={enviando}
           className="w-full rounded-lg bg-escudo py-3 font-tablero text-2xl font-bold text-white disabled:opacity-60">

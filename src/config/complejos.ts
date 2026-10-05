@@ -36,3 +36,6 @@ export const COMPLEJOS: Complejo[] = [
 ]
 
 export const complejoPorId = (id: ComplejoId) => COMPLEJOS.find((c) => c.id === id)!
+
+/** El login pide "Tu nombre" solo si algún complejo tiene reservas manuales (queda registrado en cada cambio) */
+export const PIDE_NOMBRE = COMPLEJOS.some((c) => c.reservasManuales)
