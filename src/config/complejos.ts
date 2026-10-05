@@ -12,6 +12,8 @@ export interface Complejo {
   canchas: string[]         // el orden es el de las columnas
   horarios: string[]        // HH:MM
   estilo: 'nodo'            // diseño de la imagen
+  // Reservas tomadas por ATC (atcsports.io): id de cancha en ATC -> nombre de cancha en esta app
+  atc?: { canchas: Record<string, string> }
 }
 
 // Siempre HH:MM con cero adelante ('07:30', no '7:30'): la base valida ese formato y ordena como texto.
@@ -25,6 +27,7 @@ export const COMPLEJOS: Complejo[] = [
     canchas: ['C1', 'C2', 'C3'],
     horarios: HORARIOS,
     estilo: 'nodo',
+    atc: { canchas: { '6261': 'C1', '6262': 'C2', '6263': 'C3' } }, // Cancha Padel 1, 2 y 3 en ATC
   },
 ]
 

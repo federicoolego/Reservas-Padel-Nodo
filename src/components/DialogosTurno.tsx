@@ -99,6 +99,23 @@ export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura 
   )
 
   return (
+    turno.origen === 'atc' ? (
+    <Dialogo titulo="Ocupado - ATC" subtitulo={textoLugar(lugar)} alCerrar={alCerrar}>
+      <dl className="rounded-xl bg-niebla px-4">
+        {fila('Origen', 'Reserva tomada en ATC')}
+        {fila('Visto en ATC', fechaHoraDe(turno.actualizado))}
+      </dl>
+      <div className="mt-4 flex gap-2">
+        <button ref={cerrar} onClick={alCerrar}
+          className="flex-1 rounded-xl bg-noche py-3 font-tablero text-2xl font-bold text-white">
+          Cerrar
+        </button>
+      </div>
+      <p className="mt-3 text-xs text-tinta">
+        ATC no informa para quién es. Se libera solo si el turno vuelve a quedar disponible en ATC: tocá {'"Reservas ATC"'} para actualizar.
+      </p>
+    </Dialogo>
+    ) : (
     <Dialogo titulo={turno.fijo_id ? 'Turno fijo' : 'Turno reservado'} subtitulo={textoLugar(lugar)} alCerrar={alCerrar}>
       <dl className="rounded-xl bg-niebla px-4">
         {fila('Para', turno.reservado_para || <span className="font-normal italic text-tinta">Sin dato</span>)}
@@ -126,5 +143,6 @@ export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura 
         </p>
       )}
     </Dialogo>
+    )
   )
 }

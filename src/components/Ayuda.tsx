@@ -77,6 +77,12 @@ export default function Ayuda({ alCerrar }: { alCerrar: () => void }) {
             <p>Si editás o eliminás un turno fijo, cambian sus reservas de hoy en adelante. Las pasadas quedan como historial.</p>
           </Seccion>
 
+          <Seccion titulo="Reservas de ATC">
+            <p>NODO también toma reservas por ATC (atcsports.io). En la pestaña {b('Turnos')}, tocá {b('Reservas ATC')}: la app consulta ATC para el día que estás viendo y marca como {b('Ocupado - ATC')} los turnos que allá no están disponibles.</p>
+            <p>ATC no informa para quién es la reserva, solo que el turno está tomado. Si un turno de ATC se cancela allá, al volver a tocar el botón se libera acá.</p>
+            <p>Nunca pisa una reserva cargada en la app ni un turno fijo. Los turnos de ATC salen con pelotita en la imagen.</p>
+          </Seccion>
+
           <Seccion titulo="Compartir la imagen">
             <p>En la pestaña {b('Imagen')} está la imagen del día elegido, actualizada con la tabla. No hay que generarla: cambia sola con cada reserva.</p>
             <p>En el celu, tocá {b('Compartir por WhatsApp')} y elegí el chat o el estado. En la compu, tocá {b('Descargar imagen')} y arrastrala a WhatsApp Web.</p>

@@ -36,6 +36,25 @@ mes próximo; nunca pisa un turno ya reservado. La app llama a `reservas_nodo_fi
 ventana se corre sola (el día 1 de cada mes se suma un mes). Si querés que pase aunque nadie abra la app, programalo con
 pg_cron (comentado al final del script).
 
+## Reservas de ATC
+
+NODO toma reservas también por ATC (atcsports.io). El botón **Reservas ATC** (pestaña Turnos) consulta la
+disponibilidad pública de NODO en ATC para el día que se está viendo y marca **Ocupado - ATC** los turnos que allá no
+están libres (columna `origen = 'atc'`). ATC no informa para quién es la reserva.
+
+- La consulta la hace la Edge Function `supabase/functions/atc-nodo` (el navegador no puede leer ATC directo por CORS).
+  Solo lee datos públicos: no usa credenciales.
+- La base (`reservas_nodo_atc_sincronizar`) marca lo ocupado y libera lo que ATC volvió a habilitar. Nunca pisa
+  reservas cargadas en la app ni fijos.
+- Las canchas de ATC se mapean en `src/config/complejos.ts` (`atc.canchas`: 6261 → C1, 6262 → C2, 6263 → C3).
+
+**Publicar la Edge Function** (una vez, y cada vez que se cambie):
+
+- Desde el panel: **Edge Functions → Deploy a new function → Via Editor**, nombre `atc-nodo`, pegar
+  `supabase/functions/atc-nodo/index.ts` y **Deploy**. En los detalles de la función, desactivar **Verify JWT**
+  (lee datos públicos, y así funciona con cualquier tipo de anon key).
+- O con la CLI: `supabase functions deploy atc-nodo --no-verify-jwt`.
+
 ## Fechas
 
 - **Reservar / cancelar**: desde hoy hasta el último día del mes próximo.

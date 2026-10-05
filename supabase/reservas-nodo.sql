@@ -77,8 +77,12 @@ create table if not exists public.reservas_nodo_turnos (
   actualizado      timestamptz not null default now(),
   reservado_para   text check (reservado_para is null or char_length(reservado_para) between 1 and 40),
   fijo_id          uuid references public.reservas_nodo_fijos(id) on delete set null,
+  origen           text check (origen is null or origen in ('atc')),   -- 'atc': ocupado según ATC
   primary key (fecha, complejo, cancha, hora)
 );
+
+alter table public.reservas_nodo_turnos
+  add column if not exists origen text check (origen is null or origen in ('atc'));
 
 create index if not exists reservas_nodo_turnos_fecha_complejo
   on public.reservas_nodo_turnos (fecha, complejo);
@@ -194,7 +198,8 @@ begin
          actualizado_por = excluded.actualizado_por,
          actualizado     = excluded.actualizado,
          reservado_para  = excluded.reservado_para,
-         fijo_id         = excluded.fijo_id
+         fijo_id         = excluded.fijo_id,
+         origen          = null
    where public.reservas_nodo_turnos.estado <> 'reservada';   -- ocupado: se saltea
 
   get diagnostics v_n = row_count;
@@ -344,7 +349,8 @@ begin
                 actualizado_por = excluded.actualizado_por,
                 actualizado     = excluded.actualizado,
                 reservado_para  = excluded.reservado_para,
-                fijo_id         = null
+                fijo_id         = null,
+                origen          = null
   returning * into v_fila;
 
   -- liberar una fecha de un fijo: se anota para que no se vuelva a reservar sola
@@ -616,6 +622,56 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------
+-- Reservas de ATC (atcsports.io)
+-- La app consulta ATC (Edge Function atc-nodo), calcula qué turnos de la grilla están
+-- ocupados allá y los manda acá como 'cancha|hora'. Esta función:
+--   * marca "Ocupado - ATC" los que acá están libres (nunca pisa reservas manuales ni fijos);
+--   * libera los que había marcado ATC y que ATC volvió a mostrar libres (solo si no empezaron).
+-- ---------------------------------------------------------------------
+create or replace function public.reservas_nodo_atc_sincronizar(p_token uuid, p_fecha date, p_ocupados text[])
+returns table (marcados int, liberados int)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nombre text := public.reservas_nodo__sesion(p_token);
+  v_ocup   text[] := coalesce(p_ocupados, '{}');
+  v_m      int;
+  v_l      int;
+begin
+  if p_fecha < public.reservas_nodo__hoy() then
+    raise exception 'Solo se puede reservar/cancelar turnos del día o posteriores.' using errcode = '22023';
+  end if;
+  if p_fecha > public.reservas_nodo__fecha_maxima() then
+    raise exception 'Solo se puede reservar hasta el último día del mes próximo.' using errcode = '22023';
+  end if;
+
+  insert into public.reservas_nodo_turnos
+         (fecha, complejo, cancha, hora, estado, actualizado_por, actualizado, reservado_para, fijo_id, origen)
+  select p_fecha, 'nodo', split_part(o, '|', 1), split_part(o, '|', 2), 'reservada', 'ATC', now(), 'ATC', null, 'atc'
+    from unnest(v_ocup) as o
+   where o ~ '^[^|]{1,20}[|][0-2][0-9]:[0-5][0-9]$'
+  on conflict (fecha, complejo, cancha, hora) do update
+     set estado = 'reservada', actualizado_por = 'ATC', actualizado = now(),
+         reservado_para = 'ATC', fijo_id = null, origen = 'atc'
+   where public.reservas_nodo_turnos.estado <> 'reservada';
+  get diagnostics v_m = row_count;
+
+  update public.reservas_nodo_turnos t
+     set estado = 'libre', reservado_para = null, origen = null,
+         actualizado_por = 'ATC', actualizado = now()
+   where t.fecha = p_fecha and t.complejo = 'nodo'
+     and t.origen = 'atc' and t.estado = 'reservada'
+     and not ((t.cancha || '|' || t.hora) = any (v_ocup))
+     and public.reservas_nodo__futuro(t.fecha, t.hora);
+  get diagnostics v_l = row_count;
+
+  return query select v_m, v_l;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Permisos
 -- ---------------------------------------------------------------------
 revoke all on function public.reservas_nodo__dias_historia()                  from public;
@@ -637,6 +693,7 @@ revoke all on function public.reservas_nodo_contacto_mover(uuid, uuid, int)     
 revoke all on function public.reservas_nodo_fijos_sincronizar(uuid)                                              from public;
 revoke all on function public.reservas_nodo_fijo_previsualizar(text, text[], text, smallint, text, date, date, uuid) from public;
 revoke all on function public.reservas_nodo_fijo_guardar(uuid, uuid, text, text, smallint, text, text, date, date)  from public;
+revoke all on function public.reservas_nodo_atc_sincronizar(uuid, date, text[])                       from public;
 revoke all on function public.reservas_nodo_fijo_eliminar(uuid, uuid)                                            from public;
 
 grant execute on function public.reservas_nodo_login(text, text, text)                                              to anon, authenticated;
@@ -649,6 +706,7 @@ grant execute on function public.reservas_nodo_contacto_mover(uuid, uuid, int)  
 grant execute on function public.reservas_nodo_fijos_sincronizar(uuid)                                              to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_previsualizar(text, text[], text, smallint, text, date, date, uuid) to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_guardar(uuid, uuid, text, text, smallint, text, text, date, date)  to anon, authenticated;
+grant execute on function public.reservas_nodo_atc_sincronizar(uuid, date, text[])                       to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_eliminar(uuid, uuid)                                            to anon, authenticated;
 
 -- ---------------------------------------------------------------------

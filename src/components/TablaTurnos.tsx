@@ -4,6 +4,7 @@ import { cambiarEstado, claveTurno, SesionVencida, type Estado, type MapaTurnos,
 import { ahoraHHMM, horaDe, hoyISO } from '../lib/fechas'
 import { DialogoDetalle, DialogoReservar } from './DialogosTurno'
 import { esPasado, MENSAJE_PASADO } from '../config/limites'
+import { sincronizarATC } from '../lib/atc'
 
 interface Props {
   complejo: Complejo
@@ -26,6 +27,7 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
   // turno con el popup abierto; el popup que se ve depende del estado en vivo del turno
   const [seleccion, setSeleccion] = useState<{ cancha: string; hora: string } | null>(null)
   const temporizador = useRef<number>()
+  const [consultandoATC, setConsultandoATC] = useState(false)
 
   useEffect(() => () => window.clearTimeout(temporizador.current), [])
 
@@ -82,6 +84,26 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
     if (pasado && turnos[claveTurno(cancha, hora)]?.estado !== 'reservada') return mostrar({ texto: MENSAJE_PASADO, error: true })
     setSeleccion({ cancha, hora })
   }
+  /** Trae de ATC lo ocupado en el día y lo deja marcado como "Ocupado - ATC" (y libera lo que ATC volvió a habilitar) */
+  async function consultarATC() {
+    if (pasado) return mostrar({ texto: MENSAJE_PASADO, error: true })
+    setConsultandoATC(true)
+    try {
+      const r = await sincronizarATC(token, complejo, fecha)
+      const cambios = [r.marcados && `${r.marcados} nuevo${r.marcados === 1 ? '' : 's'}`, r.liberados && `${r.liberados} liberado${r.liberados === 1 ? '' : 's'}`].filter(Boolean)
+      mostrar({
+        texto: r.ocupados
+          ? `ATC: ${r.ocupados} turno${r.ocupados === 1 ? '' : 's'} ocupado${r.ocupados === 1 ? '' : 's'}${cambios.length ? ` (${cambios.join(', ')})` : ', sin cambios'}.`
+          : `ATC: no hay turnos ocupados${r.liberados ? ` (${r.liberados} liberado${r.liberados === 1 ? '' : 's'})` : ''}.`,
+      })
+    } catch (e) {
+      if (e instanceof SesionVencida) alVencerSesion()
+      else mostrar({ texto: (e as Error).message, error: true })
+    } finally {
+      setConsultandoATC(false)
+    }
+  }
+
   const ahora = ahoraHHMM()
   const total = complejo.canchas.length * complejo.horarios.length
   const reservadas = complejo.canchas.reduce(
@@ -94,9 +116,17 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
           <strong className="text-noche">Día pasado: solo consulta.</strong> Tocá un turno reservado para ver el detalle.
         </p>
       ) : (
-        <p className="mb-3 text-sm text-tinta">
-          <strong className="text-noche">{total - reservadas}</strong> libres de {total}. Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.
-        </p>
+        <div className="mb-3 flex items-start gap-3">
+          <p className="flex-1 text-sm text-tinta">
+            <strong className="text-noche">{total - reservadas}</strong> libres de {total}. Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.
+          </p>
+          {complejo.atc && (
+            <button onClick={consultarATC} disabled={consultandoATC}
+              className="shrink-0 rounded-xl bg-escudo px-3 py-2 font-tablero text-lg font-bold leading-none text-white disabled:opacity-60">
+              {consultandoATC ? 'Consultando…' : 'Reservas ATC'}
+            </button>
+          )}
+        </div>
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-linea bg-white">
@@ -119,6 +149,7 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
                     const k = claveTurno(c, h)
                     const t = turnos[k]
                     const reservada = t?.estado === 'reservada'
+                    const deATC = reservada && t?.origen === 'atc'
                     const pendiente = pendientes.has(k)
                     return (
                       <td key={c} className="p-1">
@@ -126,15 +157,19 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
                           onClick={() => tocar(c, h)}
                           disabled={pendiente}
                           aria-pressed={reservada}
-                          aria-label={`${h} ${c}: ${reservada ? 'reservada' : 'libre'}`}
+                          aria-label={`${h} ${c}: ${deATC ? 'ocupado ATC' : reservada ? 'reservada' : 'libre'}`}
                           className={`flex h-14 w-full min-w-[64px] flex-col items-center justify-center rounded-xl border-2 transition-colors ${
-                            reservada
+                            deATC
+                              ? 'border-escudo bg-escudo text-white'
+                              : reservada
                               ? 'border-rojo bg-rojo text-white'
                               : 'border-cesped/40 bg-cesped/5 text-cesped active:bg-cesped/15'
                           } ${pendiente ? 'animate-pulse' : ''} ${paso || pasado ? 'opacity-60' : ''}`}
                         >
-                          <span className="font-tablero text-xl font-bold leading-none">{reservada ? 'Reservada' : 'Libre'}</span>
-                          {reservada && t?.fijo_id ? (
+                          <span className="font-tablero text-xl font-bold leading-none">{deATC ? 'Ocupado' : reservada ? 'Reservada' : 'Libre'}</span>
+                          {deATC ? (
+                            <span className="mt-1 text-[11px] font-semibold leading-none text-pelota">ATC</span>
+                          ) : reservada && t?.fijo_id ? (
                             <span className="mt-1 max-w-full truncate px-1 text-[11px] font-semibold leading-none text-pelota">
                               Fijo · {t.reservado_para}
                             </span>

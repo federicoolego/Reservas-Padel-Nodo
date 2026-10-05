@@ -20,6 +20,7 @@ export const RPC = {
   fijoPrevisualizar: `${PREFIJO}_fijo_previsualizar`,
   fijoGuardar: `${PREFIJO}_fijo_guardar`,
   fijoEliminar: `${PREFIJO}_fijo_eliminar`,
+  atcSincronizar: `${PREFIJO}_atc_sincronizar`,
 } as const
 
 // Claves de localStorage: otras apps del mismo dominio (federicoolego.github.io) lo comparten.

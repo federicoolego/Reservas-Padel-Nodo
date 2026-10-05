@@ -14,6 +14,7 @@ export interface Turno {
   actualizado: string
   reservado_para?: string | null
   fijo_id?: string | null
+  origen?: 'atc' | null // 'atc': ocupado según ATC (lo marca el botón Reservas ATC)
 }
 
 export const claveTurno = (cancha: string, hora: string) => `${cancha}|${hora}`
