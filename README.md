@@ -38,9 +38,14 @@ pg_cron (comentado al final del script).
 
 ## Reservas de ATC
 
-NODO toma reservas también por ATC (atcsports.io). El botón **Reservas ATC** (pestaña Turnos) consulta la
-disponibilidad pública de NODO en ATC para el día que se está viendo y marca **Ocupado - ATC** los turnos que allá no
-están libres (columna `origen = 'atc'`). ATC no informa para quién es la reserva.
+En NODO **la fuente de reservas es ATC** (atcsports.io). La app consulta la disponibilidad pública de NODO en ATC
+para el día que se está viendo y marca **Ocupado - ATC** los turnos que allá no están libres (columna `origen = 'atc'`).
+ATC no informa para quién es la reserva.
+
+- Se actualiza sola: al abrir la app, al cambiar de día, cada 5 minutos y al volver a la app (`src/lib/useATC.ts`).
+  El botón **Reservas ATC** fuerza la actualización.
+- La tabla es de **solo lectura** y la pestaña **Fijos** no se muestra: `reservasManuales: false` en
+  `src/config/complejos.ts`. Con `true` vuelve todo (reservar/liberar a mano y turnos fijos); el código está intacto.
 
 - La consulta la hace la Edge Function `supabase/functions/atc-nodo` (el navegador no puede leer ATC directo por CORS).
   Solo lee datos públicos: no usa credenciales.

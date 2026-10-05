@@ -53,7 +53,12 @@ export interface ResultadoATC {
 /** Consulta ATC para la fecha y deja la tabla igual: marca lo ocupado y libera lo que ATC volvió a habilitar */
 export async function sincronizarATC(token: string, c: Complejo, fecha: string): Promise<ResultadoATC> {
   const { data, error } = await supabase.functions.invoke<DisponibilidadATC & { error?: string }>('atc-nodo', { body: { fecha } })
-  if (error || !data || data.error) throw new Error(data?.error ?? 'No se pudo consultar ATC. Probá de nuevo en un rato.')
+  if (error) {
+    const status = (error as { context?: { status?: number } }).context?.status
+    if (status === 404) throw new Error('La función atc-nodo no está publicada en Supabase (404). Revisá Edge Functions.')
+    throw new Error('No se pudo consultar ATC. Probá de nuevo en un rato.')
+  }
+  if (!data || data.error) throw new Error(data?.error ?? 'No se pudo consultar ATC. Probá de nuevo en un rato.')
   const ocupados = ocupadosATC(c, data)
   const { data: r, error: e } = await supabase.rpc(RPC.atcSincronizar, { p_token: token, p_fecha: fecha, p_ocupados: ocupados })
   if (e) {

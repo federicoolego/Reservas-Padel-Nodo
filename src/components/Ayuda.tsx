@@ -13,7 +13,8 @@ function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) 
   )
 }
 
-export default function Ayuda({ alCerrar }: { alCerrar: () => void }) {
+// manual = false: la fuente de reservas es ATC (tabla de solo lectura, sin turnos fijos)
+export default function Ayuda({ alCerrar, manual = true }: { alCerrar: () => void; manual?: boolean }) {
   const cerrar = useRef<HTMLButtonElement>(null)
   const hoy = hoyISO()
   const desde = ddmm(sumarDias(hoy, -DIAS_HISTORIA))
@@ -48,20 +49,24 @@ export default function Ayuda({ alCerrar }: { alCerrar: () => void }) {
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] pt-5">
           <p className="leading-relaxed text-tinta">
-            Esta app reemplaza a la imagen que se iba editando a mano: todos los que toman reservas cargan en la
-            misma tabla y la imagen para WhatsApp se arma sola.
+            {manual
+              ? 'Esta app reemplaza a la imagen que se iba editando a mano: todos los que toman reservas cargan en la misma tabla y la imagen para WhatsApp se arma sola.'
+              : 'Las reservas se toman en ATC (atcsports.io). Esta app trae de ATC qué turnos están ocupados, los muestra en la tabla y arma sola la imagen de turnos libres para WhatsApp.'}
           </p>
 
           <Seccion titulo="Ingresar">
-            <p>Entrá con el usuario y la contraseña del complejo. En {b('Tu nombre')}, que es obligatorio, poné cómo te llaman: aparece en cada turno que marques, así se sabe quién lo tomó.</p>
+            <p>Entrá con el usuario y la contraseña del complejo. En {b('Tu nombre')}, que es obligatorio, poné cómo te llaman{manual ? ': aparece en cada turno que marques, así se sabe quién lo tomó' : ''}.</p>
             <p>La sesión queda abierta en ese celu o compu durante 60 días. Si la usás en un equipo compartido, tocá {b('Salir')} al terminar.</p>
           </Seccion>
 
           <Seccion titulo="Elegir el día">
-            <p>La app tiene tres pestañas: {b('Fijos')}, {b('Turnos')} (C1, C2 y C3) e {b('Imagen')}.</p>
+            {manual
+              ? <p>La app tiene tres pestañas: {b('Fijos')}, {b('Turnos')} (C1, C2 y C3) e {b('Imagen')}.</p>
+              : <p>La app tiene dos pestañas: {b('Turnos')} (C1, C2 y C3) e {b('Imagen')}.</p>}
             <p>Con las flechas ‹ › pasás al día anterior o al siguiente. Para ir a una fecha puntual, tocá la fecha y se abre el calendario. El botón {b('Hoy')} te vuelve al día actual.</p>
           </Seccion>
 
+          {manual && <>
           <Seccion titulo="Cargar una reserva">
             <p>En la pestaña {b('Turnos')}, tocá el horario libre en la cancha que corresponde. Se abre un cuadro que pregunta {b('¿Para quién es la reserva?')}: escribí el nombre y tocá {b('Reservar')}.</p>
             <p>Si tocás un turno ya reservado, ves para quién es, quién lo reservó y cuándo. Desde ahí lo podés liberar con {b('Liberar turno')}.</p>
@@ -76,12 +81,22 @@ export default function Ayuda({ alCerrar }: { alCerrar: () => void }) {
             <p>En la tabla, los turnos fijos dicen {b('Fijo')}. Si un día no vienen, tocá el turno y elegí {b('Liberar solo este día')}: las otras semanas siguen reservadas.</p>
             <p>Si editás o eliminás un turno fijo, cambian sus reservas de hoy en adelante. Las pasadas quedan como historial.</p>
           </Seccion>
+          </>}
 
+          {manual ? (
           <Seccion titulo="Reservas de ATC">
             <p>NODO también toma reservas por ATC (atcsports.io). En la pestaña {b('Turnos')}, tocá {b('Reservas ATC')}: la app consulta ATC para el día que estás viendo y marca como {b('Ocupado - ATC')} los turnos que allá no están disponibles.</p>
             <p>ATC no informa para quién es la reserva, solo que el turno está tomado. Si un turno de ATC se cancela allá, al volver a tocar el botón se libera acá.</p>
             <p>Nunca pisa una reserva cargada en la app ni un turno fijo. Los turnos de ATC salen con pelotita en la imagen.</p>
           </Seccion>
+          ) : (
+          <Seccion titulo="Reservas de ATC">
+            <p>La tabla se actualiza sola desde ATC: al abrir la app, al cambiar de día, cada 5 minutos y cuando volvés a la app. Arriba de la tabla ves cuántos turnos están ocupados y a qué hora fue la última actualización.</p>
+            <p>Si querés actualizar en el momento (por ejemplo, justo antes de compartir la imagen), tocá {b('Reservas ATC')}.</p>
+            <p>Los turnos tomados en ATC se ven como {b('Ocupado · ATC')} y salen con pelotita en la imagen. ATC no informa para quién es la reserva. Si una reserva se cancela en ATC, en la próxima actualización el turno vuelve a quedar libre.</p>
+            <p>Para reservar, cancelar o bloquear un turno, hacelo en ATC: esta app solo muestra lo que hay allá.</p>
+          </Seccion>
+          )}
 
           <Seccion titulo="Compartir la imagen">
             <p>En la pestaña {b('Imagen')} está la imagen del día elegido, actualizada con la tabla. No hay que generarla: cambia sola con cada reserva.</p>
@@ -94,7 +109,7 @@ export default function Ayuda({ alCerrar }: { alCerrar: () => void }) {
           </Seccion>
 
           <Seccion titulo="Qué fechas se pueden usar">
-            <p>Se puede {b('reservar y cancelar')} desde hoy hasta el último día del mes próximo: hoy eso es hasta el {b(hasta)}. El primer día de cada mes se habilita un mes más.</p>
+            <p>Se puede {b(manual ? 'reservar y cancelar' : 'consultar ATC')} desde hoy hasta el último día del mes próximo: hoy eso es hasta el {b(hasta)}. El primer día de cada mes se habilita un mes más.</p>
             <p>Los días anteriores a hoy son de {b('solo consulta')}: se ven los turnos y quién los reservó, pero no se pueden cambiar. El historial llega hasta {DIAS_HISTORIA} días atrás (hoy, desde el {b(desde)}).</p>
             <p>Fuera de ese rango, las flechas se desactivan y el calendario no deja elegir la fecha.</p>
           </Seccion>
@@ -106,7 +121,9 @@ export default function Ayuda({ alCerrar }: { alCerrar: () => void }) {
 
           <Seccion titulo="Si algo no anda">
             <p>{b('"La sesión se cerró"')}: cambió la contraseña o pasaron los 60 días. Volvé a ingresar.</p>
-            <p>{b('"No se pudo guardar el cambio"')}: se cortó la conexión. El turno vuelve a como estaba; tocalo de nuevo cuando tengas señal.</p>
+            {manual
+              ? <p>{b('"No se pudo guardar el cambio"')}: se cortó la conexión. El turno vuelve a como estaba; tocalo de nuevo cuando tengas señal.</p>
+              : <p>{b('"No se pudo consultar ATC"')}: se cortó la conexión o ATC no respondió. La tabla queda como estaba; tocá {b('Reservas ATC')} en un rato.</p>}
             <p>{b('No aparece el botón de compartir')}: ese navegador no lo permite. Usá {b('Descargar imagen')} y mandala desde WhatsApp.</p>
           </Seccion>
         </div>

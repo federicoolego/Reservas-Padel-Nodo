@@ -4,7 +4,6 @@ import { cambiarEstado, claveTurno, SesionVencida, type Estado, type MapaTurnos,
 import { ahoraHHMM, horaDe, hoyISO } from '../lib/fechas'
 import { DialogoDetalle, DialogoReservar } from './DialogosTurno'
 import { esPasado, MENSAJE_PASADO } from '../config/limites'
-import { sincronizarATC } from '../lib/atc'
 
 interface Props {
   complejo: Complejo
@@ -13,7 +12,10 @@ interface Props {
   token: string
   aplicarLocal: (t: Turno) => void
   alVencerSesion: () => void
+  soloLectura?: boolean // la fuente de reservas es ATC: no se reserva ni libera a mano
 }
+
+export const MENSAJE_ATC = 'Las reservas se toman en ATC. La tabla se actualiza sola desde ATC.'
 
 interface Aviso {
   texto: string
@@ -21,13 +23,12 @@ interface Aviso {
   error?: boolean
 }
 
-export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLocal, alVencerSesion }: Props) {
+export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLocal, alVencerSesion, soloLectura = false }: Props) {
   const [pendientes, setPendientes] = useState<Set<string>>(new Set())
   const [aviso, setAviso] = useState<Aviso | null>(null)
   // turno con el popup abierto; el popup que se ve depende del estado en vivo del turno
   const [seleccion, setSeleccion] = useState<{ cancha: string; hora: string } | null>(null)
   const temporizador = useRef<number>()
-  const [consultandoATC, setConsultandoATC] = useState(false)
 
   useEffect(() => () => window.clearTimeout(temporizador.current), [])
 
@@ -39,6 +40,7 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
 
   async function guardar(cancha: string, hora: string, estado: Estado, para: string | null, conDeshacer: boolean) {
     if (esPasado(fecha)) return mostrar({ texto: MENSAJE_PASADO, error: true })
+    if (soloLectura) return mostrar({ texto: MENSAJE_ATC })
     const k = claveTurno(cancha, hora)
     const anterior = turnos[k]
     // cambio optimista: se ve al instante y se revierte si falla
@@ -81,29 +83,11 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
 
   // día pasado: lo libre avisa; lo reservado abre el detalle en solo lectura
   function tocar(cancha: string, hora: string) {
-    if (pasado && turnos[claveTurno(cancha, hora)]?.estado !== 'reservada') return mostrar({ texto: MENSAJE_PASADO, error: true })
+    const reservada = turnos[claveTurno(cancha, hora)]?.estado === 'reservada'
+    if (pasado && !reservada) return mostrar({ texto: MENSAJE_PASADO, error: true })
+    if (soloLectura && !reservada) return mostrar({ texto: MENSAJE_ATC })
     setSeleccion({ cancha, hora })
   }
-  /** Trae de ATC lo ocupado en el día y lo deja marcado como "Ocupado - ATC" (y libera lo que ATC volvió a habilitar) */
-  async function consultarATC() {
-    if (pasado) return mostrar({ texto: MENSAJE_PASADO, error: true })
-    setConsultandoATC(true)
-    try {
-      const r = await sincronizarATC(token, complejo, fecha)
-      const cambios = [r.marcados && `${r.marcados} nuevo${r.marcados === 1 ? '' : 's'}`, r.liberados && `${r.liberados} liberado${r.liberados === 1 ? '' : 's'}`].filter(Boolean)
-      mostrar({
-        texto: r.ocupados
-          ? `ATC: ${r.ocupados} turno${r.ocupados === 1 ? '' : 's'} ocupado${r.ocupados === 1 ? '' : 's'}${cambios.length ? ` (${cambios.join(', ')})` : ', sin cambios'}.`
-          : `ATC: no hay turnos ocupados${r.liberados ? ` (${r.liberados} liberado${r.liberados === 1 ? '' : 's'})` : ''}.`,
-      })
-    } catch (e) {
-      if (e instanceof SesionVencida) alVencerSesion()
-      else mostrar({ texto: (e as Error).message, error: true })
-    } finally {
-      setConsultandoATC(false)
-    }
-  }
-
   const ahora = ahoraHHMM()
   const total = complejo.canchas.length * complejo.horarios.length
   const reservadas = complejo.canchas.reduce(
@@ -116,17 +100,10 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
           <strong className="text-noche">Día pasado: solo consulta.</strong> Tocá un turno reservado para ver el detalle.
         </p>
       ) : (
-        <div className="mb-3 flex items-start gap-3">
-          <p className="flex-1 text-sm text-tinta">
-            <strong className="text-noche">{total - reservadas}</strong> libres de {total}. Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.
-          </p>
-          {complejo.atc && (
-            <button onClick={consultarATC} disabled={consultandoATC}
-              className="shrink-0 rounded-xl bg-escudo px-3 py-2 font-tablero text-lg font-bold leading-none text-white disabled:opacity-60">
-              {consultandoATC ? 'Consultando…' : 'Reservas ATC'}
-            </button>
-          )}
-        </div>
+        <p className="mb-3 text-sm text-tinta">
+          <strong className="text-noche">{total - reservadas}</strong> libres de {total}.{' '}
+          {soloLectura ? 'Tocá un turno ocupado para ver el detalle.' : 'Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.'}
+        </p>
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-linea bg-white">
@@ -194,9 +171,10 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
         const t = turnos[claveTurno(cancha, hora)]
         const lugar = { hora, cancha: complejo.canchas.length > 1 ? cancha : null, fecha }
         const cerrar = () => setSeleccion(null)
-        if (pasado && t?.estado !== 'reservada') return null
+        if ((pasado || soloLectura) && t?.estado !== 'reservada') return null
         return t?.estado === 'reservada' ? (
-          <DialogoDetalle lugar={lugar} turno={t} alCerrar={cerrar} soloLectura={pasado}
+          <DialogoDetalle lugar={lugar} turno={t} alCerrar={cerrar} soloLectura={pasado || soloLectura}
+            notaSoloLectura={pasado ? undefined : 'Las reservas se gestionan en ATC.'}
             alLiberar={() => { cerrar(); guardar(cancha, hora, 'libre', null, true) }} />
         ) : (
           <DialogoReservar lugar={lugar} alCerrar={cerrar}

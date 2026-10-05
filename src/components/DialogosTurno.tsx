@@ -81,12 +81,13 @@ export function DialogoReservar({ lugar, alConfirmar, alCerrar }: {
   )
 }
 
-export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura = false }: {
+export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura = false, notaSoloLectura }: {
   lugar: LugarTurno
   turno: Turno
   alLiberar: () => void
   alCerrar: () => void
-  soloLectura?: boolean // día pasado: se puede ver, no liberar
+  soloLectura?: boolean // día pasado (o reservas por ATC): se puede ver, no liberar
+  notaSoloLectura?: string
 }) {
   const cerrar = useRef<HTMLButtonElement>(null)
   useEffect(() => cerrar.current?.focus(), [])
@@ -135,7 +136,7 @@ export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura 
         )}
       </div>
       {soloLectura && (
-        <p className="mt-3 text-xs text-tinta">Solo se puede reservar/cancelar turnos del día o posteriores.</p>
+        <p className="mt-3 text-xs text-tinta">{notaSoloLectura ?? 'Solo se puede reservar/cancelar turnos del día o posteriores.'}</p>
       )}
       {turno.fijo_id && !soloLectura && (
         <p className="mt-3 text-xs text-tinta">
