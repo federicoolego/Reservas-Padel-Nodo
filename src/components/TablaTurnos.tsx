@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Complejo } from '../config/complejos'
 import { cambiarEstado, claveTurno, SesionVencida, type Estado, type MapaTurnos, type Turno } from '../lib/turnos'
-import { ahoraHHMM, horaDe, hoyISO } from '../lib/fechas'
+import { ahoraHHMM, horaDe, hoyISO, textoActualizado } from '../lib/fechas'
+import { BotonATC } from './BarraATC'
+import type { EstadoATC } from '../lib/useATC'
 import { DialogoDetalle, DialogoReservar } from './DialogosTurno'
 import { esPasado, MENSAJE_PASADO } from '../config/limites'
 
@@ -13,6 +15,8 @@ interface Props {
   aplicarLocal: (t: Turno) => void
   alVencerSesion: () => void
   soloLectura?: boolean // la fuente de reservas es ATC: no se reserva ni libera a mano
+  nombre?: string // quien usa la app: se muestra al instante como autor del cambio
+  atc?: EstadoATC // si el complejo toma reservas por ATC: "Actualizado" es la última consulta a ATC
 }
 
 export const MENSAJE_ATC = 'Las reservas se toman en ATC. La tabla se actualiza sola desde ATC.'
@@ -23,7 +27,7 @@ interface Aviso {
   error?: boolean
 }
 
-export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLocal, alVencerSesion, soloLectura = false }: Props) {
+export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLocal, alVencerSesion, soloLectura = false, nombre, atc }: Props) {
   const [pendientes, setPendientes] = useState<Set<string>>(new Set())
   const [aviso, setAviso] = useState<Aviso | null>(null)
   // turno con el popup abierto; el popup que se ve depende del estado en vivo del turno
@@ -46,7 +50,7 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
     // cambio optimista: se ve al instante y se revierte si falla
     aplicarLocal({
       fecha, complejo: complejo.id, cancha, hora, estado,
-      actualizado_por: anterior?.actualizado_por ?? null,
+      actualizado_por: nombre ?? anterior?.actualizado_por ?? null,
       actualizado: new Date().toISOString(),
       reservado_para: estado === 'reservada' ? para : null,
     })
@@ -88,6 +92,13 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
     if (soloLectura && !reservada) return mostrar({ texto: MENSAJE_ATC })
     setSeleccion({ cancha, hora })
   }
+  // "Actualizado": con ATC, la última consulta a ATC; si no (o en días pasados), el último cambio en la tabla
+  const ultimo = Object.values(turnos).reduce<Turno | null>((m, t) => (!m || Date.parse(t.actualizado) > Date.parse(m.actualizado) ? t : m), null)
+  const conATC = Boolean(atc?.activo) && !pasado
+  const actualizado = conATC && atc?.ultima
+    ? textoActualizado(atc.ultima, 'ATC')
+    : ultimo ? textoActualizado(ultimo.actualizado, ultimo.actualizado_por) : null
+
   const ahora = ahoraHHMM()
   const total = complejo.canchas.length * complejo.horarios.length
   const reservadas = complejo.canchas.reduce(
@@ -95,16 +106,26 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
 
   return (
     <div>
-      {pasado ? (
-        <p className="mb-3 rounded-xl bg-noche/5 px-3 py-2 text-sm text-tinta">
-          <strong className="text-noche">Día pasado: solo consulta.</strong> Tocá un turno reservado para ver el detalle.
-        </p>
-      ) : (
-        <p className="mb-3 text-sm text-tinta">
-          <strong className="text-noche">{total - reservadas}</strong> libres de {total}.{' '}
-          {soloLectura ? 'Tocá un turno ocupado para ver el detalle.' : 'Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.'}
-        </p>
-      )}
+      <div className="mb-3 flex items-start gap-3">
+        <div className="flex-1">
+          {pasado ? (
+            <p className="rounded-xl bg-noche/5 px-3 py-2 text-sm text-tinta">
+              <strong className="text-noche">Día pasado: solo consulta.</strong> Tocá un turno reservado para ver el detalle.
+            </p>
+          ) : (
+            <p className="text-sm text-tinta">
+              <strong className="text-noche">{total - reservadas}</strong> libres de {total}.{' '}
+              {soloLectura ? 'Tocá un turno ocupado para ver el detalle.' : 'Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.'}
+            </p>
+          )}
+          <p className="mt-1.5 text-xs text-tinta">
+            {actualizado
+              ? <>Actualizado: <strong className="font-semibold text-noche">{actualizado}</strong></>
+              : conATC ? 'Consultando reservas en ATC…' : 'Sin cambios cargados para este día.'}
+          </p>
+        </div>
+        {conATC && atc && <BotonATC atc={atc} />}
+      </div>
 
       <div className="overflow-x-auto rounded-2xl border border-linea bg-white">
         <table className="w-full border-collapse">

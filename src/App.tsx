@@ -131,7 +131,7 @@ function Principal({ sesion, alSalir, alVencer }: { sesion: Sesion; alSalir: () 
           ))}
         </div>
 
-        {vista.pestana !== 'fijos' && <BarraATC atc={atc} fecha={fecha} />}
+        {vista.pestana !== 'fijos' && <BarraATC atc={atc} fecha={fecha} soloErrores={vista.pestana === 'turnos'} />}
 
         {error && vista.pestana !== 'fijos' && (
           <div className="flex items-center justify-between gap-3 rounded-xl bg-rojo/10 px-4 py-3 text-rojo">
@@ -146,7 +146,8 @@ function Principal({ sesion, alSalir, alVencer }: { sesion: Sesion; alSalir: () 
           <p className="py-16 text-center text-tinta">Cargando turnos…</p>
         ) : vista.pestana === 'turnos' ? (
           <TablaTurnos complejo={complejo} fecha={fecha} turnos={turnos} token={sesion.token}
-            aplicarLocal={aplicarLocal} alVencerSesion={alVencer} soloLectura={!manual} />
+            aplicarLocal={aplicarLocal} alVencerSesion={alVencer} soloLectura={!manual}
+            nombre={sesion.nombre || sesion.usuario} atc={atc} />
         ) : (
           <VistaImagen complejo={complejo} fecha={fecha} turnos={turnos} token={sesion.token} alVencerSesion={alVencer} />
         )}

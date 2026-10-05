@@ -3,7 +3,6 @@ import type { Complejo } from '../config/complejos'
 import { esPasado } from '../config/limites'
 import { sincronizarATC, type ResultadoATC } from './atc'
 import { SesionVencida } from './turnos'
-import { ahoraHHMM } from './fechas'
 
 const CADA = 5 * 60 * 1000 // refresco automático mientras la app está abierta
 const AL_VOLVER = 2 * 60 * 1000 // al volver a la app, si pasó más que esto desde la última consulta
@@ -11,7 +10,7 @@ const AL_VOLVER = 2 * 60 * 1000 // al volver a la app, si pasó más que esto de
 export interface EstadoATC {
   activo: boolean // el complejo toma reservas por ATC
   consultando: boolean
-  hora: string | null // HH:MM de la última consulta que salió bien
+  ultima: string | null // momento (ISO) de la última consulta que salió bien
   resultado: ResultadoATC | null
   error: string | null
   actualizar: () => void
@@ -24,11 +23,11 @@ export interface EstadoATC {
 export function useSincronizacionATC(complejo: Complejo, fecha: string, token: string, alVencer: () => void, alTerminar?: () => void): EstadoATC {
   const activo = Boolean(complejo.atc)
   const [consultando, setConsultando] = useState(false)
-  const [hora, setHora] = useState<string | null>(null)
+  const [ultima, setUltima] = useState<string | null>(null)
   const [resultado, setResultado] = useState<ResultadoATC | null>(null)
   const [error, setError] = useState<string | null>(null)
   const enCurso = useRef(false)
-  const ultima = useRef(0)
+  const ultimaMs = useRef(0)
   const fechaActual = useRef(fecha)
   fechaActual.current = fecha
   const callbacks = useRef({ alVencer, alTerminar })
@@ -43,9 +42,9 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       const r = await sincronizarATC(token, complejo, f)
       if (f !== fechaActual.current) return // cambiaron de día mientras tanto
       setResultado(r)
-      setHora(ahoraHHMM())
+      setUltima(new Date().toISOString())
       setError(null)
-      ultima.current = Date.now()
+      ultimaMs.current = Date.now()
       callbacks.current.alTerminar?.()
     } catch (e) {
       if (e instanceof SesionVencida) callbacks.current.alVencer()
@@ -59,7 +58,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
   // al abrir y cada vez que cambia el día
   useEffect(() => {
     setResultado(null)
-    setHora(null)
+    setUltima(null)
     setError(null)
     actualizar()
   }, [fecha, actualizar])
@@ -69,7 +68,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     if (!activo) return
     const t = window.setInterval(() => document.visibilityState === 'visible' && actualizar(), CADA)
     const alVolver = () => {
-      if (document.visibilityState === 'visible' && Date.now() - ultima.current > AL_VOLVER) actualizar()
+      if (document.visibilityState === 'visible' && Date.now() - ultimaMs.current > AL_VOLVER) actualizar()
     }
     document.addEventListener('visibilitychange', alVolver)
     return () => {
@@ -78,5 +77,5 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     }
   }, [activo, actualizar])
 
-  return { activo, consultando, hora, resultado, error, actualizar }
+  return { activo, consultando, ultima, resultado, error, actualizar }
 }
