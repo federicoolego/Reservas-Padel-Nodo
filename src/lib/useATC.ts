@@ -45,7 +45,19 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       const r = await sincronizarATC(token, complejo, f)
       if (f !== fechaActual.current) return // cambiaron de día mientras tanto
       setResultado(r)
-      if (informar) setInforme(r)
+      // Popup de cambios: siempre si se tocó el botón; en las automáticas, solo si hubo cambios
+      // (y no en la primera consulta de un día, que listaría todo lo ocupado como nuevo)
+      const huboCambios = r.marcados.length > 0 || r.liberados.length > 0
+      if (informar || (huboCambios && r.anterior)) {
+        // si el popup ya está abierto para ese día, se suman los cambios nuevos
+        setInforme((previo) => previo && previo.fecha === r.fecha && !informar
+          ? {
+              ...previo,
+              marcados: [...new Set([...previo.marcados.filter((k) => !r.liberados.includes(k)), ...r.marcados])],
+              liberados: [...new Set([...previo.liberados.filter((k) => !r.marcados.includes(k)), ...r.liberados])],
+            }
+          : r)
+      }
       setUltima(new Date().toISOString())
       setError(null)
       ultimaMs.current = Date.now()
