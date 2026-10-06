@@ -13,8 +13,8 @@ export interface EstadoATC {
   ultima: string | null // momento (ISO) de la última consulta que salió bien
   resultado: ResultadoATC | null
   error: string | null
-  actualizar: (opciones?: { informar?: boolean }) => void
-  informe: ResultadoATC | null // resultado a mostrar en el popup de cambios (solo cuando se toca el botón)
+  actualizar: () => void
+  informe: ResultadoATC | null // resultado a mostrar en el popup de cambios
   cerrarInforme: () => void
 }
 
@@ -36,7 +36,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
   const callbacks = useRef({ alVencer, alTerminar })
   callbacks.current = { alVencer, alTerminar }
 
-  const actualizar = useCallback(async ({ informar = false }: { informar?: boolean } = {}) => {
+  const actualizar = useCallback(async () => {
     const f = fechaActual.current
     if (!activo || enCurso.current || esPasado(f)) return
     enCurso.current = true
@@ -45,19 +45,18 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       const r = await sincronizarATC(token, complejo, f)
       if (f !== fechaActual.current) return // cambiaron de día mientras tanto
       setResultado(r)
-      // Popup: siempre con el botón, al abrir/refrescar la app y al cambiar de día (informar = true);
-      // en las automáticas de cada 5 minutos y al volver a la app, solo si hubo cambios
+      // Popup en TODAS las consultas (botón, al abrir/refrescar, al cambiar de día, cada 5 minutos y al volver a la app).
+      // Si ya hay uno abierto para ese día: se suman los cambios nuevos, y un "sin cambios" no lo pisa.
       const huboCambios = r.marcados.length > 0 || r.liberados.length > 0
-      if (informar || (huboCambios && r.anterior)) {
-        // si el popup ya está abierto para ese día, se suman los cambios nuevos
-        setInforme((previo) => previo && previo.fecha === r.fecha && !informar
-          ? {
-              ...previo,
-              marcados: [...new Set([...previo.marcados.filter((k) => !r.liberados.includes(k)), ...r.marcados])],
-              liberados: [...new Set([...previo.liberados.filter((k) => !r.marcados.includes(k)), ...r.liberados])],
-            }
-          : r)
-      }
+      setInforme((previo) => {
+        if (!previo || previo.fecha !== r.fecha) return r
+        if (!huboCambios) return previo
+        return {
+          ...previo,
+          marcados: [...new Set([...previo.marcados.filter((k) => !r.liberados.includes(k)), ...r.marcados])],
+          liberados: [...new Set([...previo.liberados.filter((k) => !r.marcados.includes(k)), ...r.liberados])],
+        }
+      })
       setUltima(new Date().toISOString())
       setError(null)
       ultimaMs.current = Date.now()
@@ -71,12 +70,12 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     }
   }, [activo, complejo, token])
 
-  // al abrir (o refrescar) y cada vez que cambia el día: siempre informa
+  // al abrir (o refrescar) y cada vez que cambia el día
   useEffect(() => {
     setResultado(null)
     setUltima(null)
     setError(null)
-    actualizar({ informar: true })
+    actualizar()
   }, [fecha, actualizar])
 
   // cada 5 minutos, y al volver a la app

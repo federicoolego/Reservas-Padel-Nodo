@@ -5,7 +5,7 @@ import { textoActualizado } from '../lib/fechas'
 /** Botón para forzar la consulta a ATC */
 export function BotonATC({ atc }: { atc: EstadoATC }) {
   return (
-    <button onClick={() => atc.actualizar({ informar: true })} disabled={atc.consultando}
+    <button onClick={() => atc.actualizar()} disabled={atc.consultando}
       className="shrink-0 rounded-lg bg-escudo px-3 py-2 font-tablero text-lg font-bold leading-none text-white disabled:opacity-60">
       {atc.consultando ? 'Consultando…' : 'Reservas ATC'}
     </button>
