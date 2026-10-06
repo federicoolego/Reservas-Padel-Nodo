@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Turno } from '../lib/turnos'
-import { fechaHoraDe, fechaLarga } from '../lib/fechas'
+import { fechaHoraDe, fechaLarga, textoActualizado } from '../lib/fechas'
 import { diaSemanaDe, losDias } from '../lib/fijos'
 
 /** Datos del turno que se muestran en el encabezado: "19:00 · BX1 · miércoles 30/09" */
@@ -145,5 +145,59 @@ export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura 
       )}
     </Dialogo>
     )
+  )
+}
+
+/** Popup con lo que cambió en ATC desde la consulta anterior */
+export function DialogoCambiosATC({ fecha, marcados, liberados, anterior, alCerrar }: {
+  fecha: string
+  marcados: string[]
+  liberados: string[]
+  anterior: string | null
+  alCerrar: () => void
+}) {
+  const cerrar = useRef<HTMLButtonElement>(null)
+  useEffect(() => cerrar.current?.focus(), [])
+  const cuando = anterior ? textoActualizado(anterior, null) : null
+
+  const lista = (titulo: string, items: string[], clase: string) => (
+    <div>
+      <p className="mb-2 text-sm font-semibold text-noche">{titulo} ({items.length})</p>
+      <div className="flex flex-wrap gap-2">
+        {items.map((k) => {
+          const [cancha, hora] = k.split('|')
+          return (
+            <span key={k} className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${clase}`}>
+              {hora} · {cancha}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  const sinCambios = !marcados.length && !liberados.length
+  return (
+    <Dialogo titulo={sinCambios ? 'Sin cambios' : 'Cambios en ATC'} subtitulo={fechaLarga(fecha)} alCerrar={alCerrar}>
+      {sinCambios ? (
+        <p className="rounded-xl bg-niebla px-4 py-3 text-sm text-noche">
+          {cuando
+            ? <>Sin cambios en los turnos respecto a la última consulta (<strong>{cuando}</strong>).</>
+            : 'No hay turnos ocupados en ATC para este día.'}
+        </p>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-sm text-tinta">
+            {cuando ? <>Respecto a la última consulta (<strong className="text-noche">{cuando}</strong>):</> : 'Primera consulta de este día:'}
+          </p>
+          {marcados.length > 0 && lista('Nuevas reservas', marcados, 'bg-escudo text-white')}
+          {liberados.length > 0 && lista('Turnos liberados', liberados, 'border border-cesped/40 bg-cesped/10 text-cesped')}
+        </div>
+      )}
+      <button ref={cerrar} onClick={alCerrar}
+        className="mt-5 w-full rounded-xl bg-noche py-3 font-tablero text-2xl font-bold text-white">
+        Cerrar
+      </button>
+    </Dialogo>
   )
 }

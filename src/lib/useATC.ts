@@ -13,7 +13,9 @@ export interface EstadoATC {
   ultima: string | null // momento (ISO) de la última consulta que salió bien
   resultado: ResultadoATC | null
   error: string | null
-  actualizar: () => void
+  actualizar: (opciones?: { informar?: boolean }) => void
+  informe: ResultadoATC | null // resultado a mostrar en el popup de cambios (solo cuando se toca el botón)
+  cerrarInforme: () => void
 }
 
 /**
@@ -26,6 +28,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
   const [ultima, setUltima] = useState<string | null>(null)
   const [resultado, setResultado] = useState<ResultadoATC | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [informe, setInforme] = useState<ResultadoATC | null>(null)
   const enCurso = useRef(false)
   const ultimaMs = useRef(0)
   const fechaActual = useRef(fecha)
@@ -33,7 +36,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
   const callbacks = useRef({ alVencer, alTerminar })
   callbacks.current = { alVencer, alTerminar }
 
-  const actualizar = useCallback(async () => {
+  const actualizar = useCallback(async ({ informar = false }: { informar?: boolean } = {}) => {
     const f = fechaActual.current
     if (!activo || enCurso.current || esPasado(f)) return
     enCurso.current = true
@@ -42,6 +45,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       const r = await sincronizarATC(token, complejo, f)
       if (f !== fechaActual.current) return // cambiaron de día mientras tanto
       setResultado(r)
+      if (informar) setInforme(r)
       setUltima(new Date().toISOString())
       setError(null)
       ultimaMs.current = Date.now()
@@ -77,5 +81,5 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     }
   }, [activo, actualizar])
 
-  return { activo, consultando, ultima, resultado, error, actualizar }
+  return { activo, consultando, ultima, resultado, error, actualizar, informe, cerrarInforme: () => setInforme(null) }
 }

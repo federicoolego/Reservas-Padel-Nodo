@@ -14,6 +14,7 @@ import { sincronizarFijos } from './lib/fijos'
 import { SesionVencida } from './lib/turnos'
 import Ayuda from './components/Ayuda'
 import BarraATC from './components/BarraATC'
+import { DialogoCambiosATC } from './components/DialogosTurno'
 import { useSincronizacionATC } from './lib/useATC'
 
 type Pestana = 'turnos' | 'fijos' | 'imagen'
@@ -153,6 +154,10 @@ function Principal({ sesion, alSalir, alVencer }: { sesion: Sesion; alSalir: () 
         )}
       </main>
       {ayuda && <Ayuda alCerrar={() => setAyuda(false)} manual={manual} />}
+      {atc.informe && (
+        <DialogoCambiosATC fecha={atc.informe.fecha} marcados={atc.informe.marcados} liberados={atc.informe.liberados}
+          anterior={atc.informe.anterior} alCerrar={atc.cerrarInforme} />
+      )}
     </div>
   )
 }

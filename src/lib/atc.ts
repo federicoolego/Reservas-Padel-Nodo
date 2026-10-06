@@ -45,9 +45,11 @@ export function ocupadosATC(c: Complejo, d: DisponibilidadATC, ahora = { hoy: ho
 }
 
 export interface ResultadoATC {
+  fecha: string
   ocupados: number
-  marcados: number
-  liberados: number
+  marcados: string[]  // turnos que pasaron a ocupados en esta consulta ('cancha|hora', por hora)
+  liberados: string[] // turnos que ATC volvió a habilitar
+  anterior: string | null // cuándo fue la consulta anterior de ese día (de cualquier celu)
 }
 
 /** Consulta ATC para la fecha y deja la tabla igual: marca lo ocupado y libera lo que ATC volvió a habilitar */
@@ -66,6 +68,6 @@ export async function sincronizarATC(token: string, c: Complejo, fecha: string):
     if (e.code === '22023') throw new Error(e.message)
     throw new Error('No se pudo guardar lo de ATC. Revisá la conexión.')
   }
-  const fila = (Array.isArray(r) ? r[0] : r) as { marcados: number; liberados: number }
-  return { ocupados: ocupados.length, marcados: fila?.marcados ?? 0, liberados: fila?.liberados ?? 0 }
+  const fila = (Array.isArray(r) ? r[0] : r) as { marcados: string[] | null; liberados: string[] | null; anterior: string | null }
+  return { fecha, ocupados: ocupados.length, marcados: fila?.marcados ?? [], liberados: fila?.liberados ?? [], anterior: fila?.anterior ?? null }
 }
