@@ -110,11 +110,13 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
         <div className="flex-1">
           {pasado ? (
             <p className="rounded-xl bg-noche/5 px-3 py-2 text-sm text-tinta">
-              <strong className="text-noche">Día pasado: solo consulta.</strong> Tocá un turno reservado para ver el detalle.
+              <strong className="text-noche">Día pasado: solo consulta.</strong>{' '}
+              <strong className="text-noche">{reservadas}</strong> reservado{reservadas === 1 ? '' : 's'} de {total}. Tocá un turno reservado para ver el detalle.
             </p>
           ) : (
             <p className="text-sm text-tinta">
-              <strong className="text-noche">{total - reservadas}</strong> libres de {total}.{' '}
+              <strong className="text-noche">{reservadas}</strong> reservado{reservadas === 1 ? '' : 's'} y{' '}
+              <strong className="text-noche">{total - reservadas}</strong> libre{total - reservadas === 1 ? '' : 's'} de {total}.{' '}
               {soloLectura ? 'Tocá un turno ocupado para ver el detalle.' : 'Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.'}
             </p>
           )}
