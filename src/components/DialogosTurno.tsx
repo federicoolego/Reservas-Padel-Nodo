@@ -177,8 +177,9 @@ export function DialogoCambiosATC({ fecha, marcados, liberados, anterior, alCerr
   )
 
   const sinCambios = !marcados.length && !liberados.length
+  const primera = !anterior // primera consulta de este día: se listan los ocupados, no son "nuevos"
   return (
-    <Dialogo titulo={sinCambios ? 'Sin cambios' : 'Cambios en ATC'} subtitulo={fechaLarga(fecha)} alCerrar={alCerrar}>
+    <Dialogo titulo={primera ? 'Reservas en ATC' : sinCambios ? 'Sin cambios' : 'Cambios en ATC'} subtitulo={fechaLarga(fecha)} alCerrar={alCerrar}>
       {sinCambios ? (
         <p className="rounded-xl bg-niebla px-4 py-3 text-sm text-noche">
           {cuando
@@ -190,7 +191,7 @@ export function DialogoCambiosATC({ fecha, marcados, liberados, anterior, alCerr
           <p className="text-sm text-tinta">
             {cuando ? <>Respecto a la última consulta (<strong className="text-noche">{cuando}</strong>):</> : 'Primera consulta de este día:'}
           </p>
-          {marcados.length > 0 && lista('Nuevas reservas', marcados, 'bg-escudo text-white')}
+          {marcados.length > 0 && lista(primera ? 'Turnos ocupados en ATC' : 'Nuevas reservas', marcados, 'bg-escudo text-white')}
           {liberados.length > 0 && lista('Turnos liberados', liberados, 'border border-cesped/40 bg-cesped/10 text-cesped')}
         </div>
       )}

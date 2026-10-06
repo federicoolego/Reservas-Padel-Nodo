@@ -45,8 +45,8 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       const r = await sincronizarATC(token, complejo, f)
       if (f !== fechaActual.current) return // cambiaron de día mientras tanto
       setResultado(r)
-      // Popup de cambios: siempre si se tocó el botón; en las automáticas, solo si hubo cambios
-      // (y no en la primera consulta de un día, que listaría todo lo ocupado como nuevo)
+      // Popup: siempre con el botón, al abrir/refrescar la app y al cambiar de día (informar = true);
+      // en las automáticas de cada 5 minutos y al volver a la app, solo si hubo cambios
       const huboCambios = r.marcados.length > 0 || r.liberados.length > 0
       if (informar || (huboCambios && r.anterior)) {
         // si el popup ya está abierto para ese día, se suman los cambios nuevos
@@ -71,12 +71,12 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     }
   }, [activo, complejo, token])
 
-  // al abrir y cada vez que cambia el día
+  // al abrir (o refrescar) y cada vez que cambia el día: siempre informa
   useEffect(() => {
     setResultado(null)
     setUltima(null)
     setError(null)
-    actualizar()
+    actualizar({ informar: true })
   }, [fecha, actualizar])
 
   // cada 5 minutos, y al volver a la app
