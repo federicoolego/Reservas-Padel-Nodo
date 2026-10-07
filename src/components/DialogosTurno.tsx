@@ -113,7 +113,7 @@ export function DialogoDetalle({ lugar, turno, alLiberar, alCerrar, soloLectura 
         </button>
       </div>
       <p className="mt-3 text-xs text-tinta">
-        ATC no informa para quién es. Se libera solo si el turno vuelve a quedar disponible en ATC: tocá {'"Reservas ATC"'} para actualizar.
+        ATC no informa para quién es. Se libera solo si el turno vuelve a quedar disponible en ATC: tocá {'"Actualizar"'} para traer lo último.
       </p>
     </Dialogo>
     ) : (

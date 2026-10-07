@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Complejo } from '../config/complejos'
 import { cambiarEstado, claveTurno, SesionVencida, type Estado, type MapaTurnos, type Turno } from '../lib/turnos'
 import { ahoraHHMM, horaDe, hoyISO, textoActualizado } from '../lib/fechas'
-import { BotonATC } from './BarraATC'
+import { BotonATC, InfoATC } from './BarraATC'
 import type { EstadoATC } from '../lib/useATC'
 import { DialogoDetalle, DialogoReservar } from './DialogosTurno'
 import { esPasado, MENSAJE_PASADO } from '../config/limites'
@@ -124,6 +124,7 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
             {actualizado
               ? <>Actualizado: <strong className="font-semibold text-noche">{actualizado}</strong></>
               : conATC ? 'Consultando reservas en ATC…' : 'Sin cambios cargados para este día.'}
+            {conATC && <InfoATC />}
           </p>
         </div>
         {conATC && atc && <BotonATC atc={atc} />}

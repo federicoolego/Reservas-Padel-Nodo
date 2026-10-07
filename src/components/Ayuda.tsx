@@ -87,14 +87,14 @@ export default function Ayuda({ alCerrar, manual = true }: { alCerrar: () => voi
 
           {manual ? (
           <Seccion titulo="Reservas de ATC">
-            <p>NODO también toma reservas por ATC (atcsports.io). En la pestaña {b('Turnos')}, tocá {b('Reservas ATC')}: la app consulta ATC para el día que estás viendo y marca como {b('Ocupado - ATC')} los turnos que allá no están disponibles.</p>
+            <p>NODO también toma reservas por ATC (atcsports.io). En la pestaña {b('Turnos')}, tocá {b('Actualizar')}: la app consulta ATC para el día que estás viendo y marca como {b('Ocupado - ATC')} los turnos que allá no están disponibles.</p>
             <p>ATC no informa para quién es la reserva, solo que el turno está tomado. Si un turno de ATC se cancela allá, al volver a tocar el botón se libera acá.</p>
             <p>Nunca pisa una reserva cargada en la app ni un turno fijo. Los turnos de ATC salen con pelotita en la imagen.</p>
           </Seccion>
           ) : (
           <Seccion titulo="Reservas de ATC">
             <p>La tabla se actualiza sola desde ATC: al abrir la app, al cambiar de día, cada 5 minutos y cuando volvés a la app. Arriba de la tabla ves cuántos turnos están ocupados y a qué hora fue la última actualización.</p>
-            <p>Si querés actualizar en el momento (por ejemplo, justo antes de compartir la imagen), tocá {b('Reservas ATC')}. Te muestra qué turnos se reservaron y cuáles se liberaron desde la última consulta, o te avisa si no hubo cambios.</p>
+            <p>Si querés actualizar en el momento (por ejemplo, justo antes de compartir la imagen), tocá {b('Actualizar')}. Te muestra qué turnos se reservaron y cuáles se liberaron desde la última consulta, o te avisa si no hubo cambios. Al lado de {b('Actualizado')} tenés el ícono {b('i')} con esta misma explicación.</p>
             <p>Los turnos tomados en ATC se ven como {b('Ocupado · ATC')} y salen con pelotita en la imagen. ATC no informa para quién es la reserva. Si una reserva se cancela en ATC, en la próxima actualización el turno vuelve a quedar libre.</p>
             <p>Para reservar, cancelar o bloquear un turno, hacelo en ATC: esta app solo muestra lo que hay allá.</p>
           </Seccion>
@@ -125,7 +125,7 @@ export default function Ayuda({ alCerrar, manual = true }: { alCerrar: () => voi
             <p>{b('"La sesión se cerró"')}: cambió la contraseña o pasaron los 60 días. Volvé a ingresar.</p>
             {manual
               ? <p>{b('"No se pudo guardar el cambio"')}: se cortó la conexión. El turno vuelve a como estaba; tocalo de nuevo cuando tengas señal.</p>
-              : <p>{b('"No se pudo consultar ATC"')}: se cortó la conexión o ATC no respondió. La tabla queda como estaba; tocá {b('Reservas ATC')} en un rato.</p>}
+              : <p>{b('"No se pudo consultar ATC"')}: se cortó la conexión o ATC no respondió. La tabla queda como estaba; tocá {b('Actualizar')} en un rato.</p>}
             <p>{b('No aparece el botón de compartir')}: ese navegador no lo permite. Usá {b('Descargar imagen')} y mandala desde WhatsApp.</p>
           </Seccion>
         </div>
