@@ -693,6 +693,9 @@ begin
   on conflict (fecha) do update set ultima = excluded.ultima, por = excluded.por;
   delete from public.reservas_nodo_atc_consultas where fecha < public.reservas_nodo__hoy() - public.reservas_nodo__dias_historia();
 
+  -- limpieza de turnos viejos (en NODO no se reserva a mano, así que set_estado ya no la hace)
+  delete from public.reservas_nodo_turnos where fecha < public.reservas_nodo__hoy() - public.reservas_nodo__dias_historia();
+
   return query select v_m, v_l, v_ant;
 end;
 $$;
