@@ -19,8 +19,8 @@ export interface Complejo {
   reservasManuales: boolean
 }
 
-// Siempre HH:MM con cero adelante ('07:30', no '7:30'): la base valida ese formato y ordena como texto.
-const HORARIOS = ['07:30', '09:00', '10:30', '12:00', '13:30', '15:00', '16:30', '18:00', '19:30', '21:00']
+// Siempre HH:MM con cero adelante ('09:00', no '9:00'): la base valida ese formato y ordena como texto.
+const HORARIOS = ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30', '18:00', '19:30', '21:00']
 
 export const COMPLEJOS: Complejo[] = [
   {
