@@ -87,9 +87,11 @@ export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) 
   const H = complejo.horarios
   const pctH = H.map((h) => pct(a.porHora[h]))
   const conDatos = H.map((h, i) => ({ h, p: pctH[i] })).filter((x) => x.p !== null) as { h: string; p: number }[]
-  const orden = [...conDatos].sort((x, y) => y.p - x.p)
+  // a igual %, primero el horario más temprano (en las dos listas)
+  const orden = [...conDatos].sort((x, y) => y.p - x.p || x.h.localeCompare(y.h))
+  const menos = [...conDatos].sort((x, y) => x.p - y.p || x.h.localeCompare(y.h))
   const tops = new Set(orden.slice(0, 3).map((x) => x.h))
-  const bajos = new Set(orden.slice(-3).map((x) => x.h))
+  const bajos = new Set(menos.slice(0, 3).map((x) => x.h))
   const pctD = a.porDia.map(pct)
   const maxD = Math.max(...pctD.map((x) => x ?? -1))
   const iDia = pctD.indexOf(maxD)
@@ -167,7 +169,7 @@ export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) 
           </div>
         ))}
         <div className="mt-2.5 grid grid-cols-2 gap-2">
-          {[['🔥 Más pedidos', orden.slice(0, 3)], ['💤 Menos pedidos', [...orden].reverse().slice(0, 3)]].map(([t, xs]) => (
+          {[['🔥 Más pedidos', orden.slice(0, 3)], ['💤 Menos pedidos', menos.slice(0, 3)]].map(([t, xs]) => (
             <div key={t as string} className="rounded-xl bg-niebla px-2.5 py-2">
               <p className="mb-1 text-[11px] font-semibold text-tinta">{t as string}</p>
               {(xs as { h: string; p: number }[]).map((x) => (
