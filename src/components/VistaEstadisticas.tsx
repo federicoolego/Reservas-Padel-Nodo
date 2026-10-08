@@ -47,7 +47,7 @@ const ConNegritas = ({ t }: { t: string }) => (
 )
 
 export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) {
-  const [periodo, setPeriodo] = useState<Periodo>(15)
+  const [periodo, setPeriodo] = useState<Periodo>(7)
   const [datos, setDatos] = useState<Estadisticas | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
