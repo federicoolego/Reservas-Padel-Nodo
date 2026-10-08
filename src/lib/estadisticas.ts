@@ -13,6 +13,8 @@ const DURACION = 90 // minutos de cada turno
 export interface Celda { reservados: number; disponibles: number }
 
 export interface Metricas {
+  dias: number // días del período con datos (consulta a ATC o alguna reserva registrada)
+  diasPeriodo: number
   total: Celda
   porHora: Record<string, Celda>
   porDia: Celda[] // 0 = lunes
@@ -57,11 +59,15 @@ function habilitado(h: string, hd: HorarioDia | undefined): boolean {
   return min(h) >= min(hd.apertura) && min(h) + DURACION <= cierra
 }
 
-function calcular(c: Complejo, desde: string, hasta: string, reservas: Set<string>, horarios: Map<string, HorarioDia>): Metricas {
-  const m: Metricas = { total: vacia(), porHora: {}, porDia: DIAS_CORTOS.map(vacia), porCelda: {}, porCancha: {} }
+function calcular(c: Complejo, desde: string, hasta: string, reservas: Set<string>, horarios: Map<string, HorarioDia>, conDatos: (f: string) => boolean): Metricas {
+  const m: Metricas = { dias: 0, diasPeriodo: 0, total: vacia(), porHora: {}, porDia: DIAS_CORTOS.map(vacia), porCelda: {}, porCancha: {} }
   for (const h of c.horarios) m.porHora[h] = vacia()
   for (const ca of c.canchas) m.porCancha[ca] = vacia()
   for (let f = desde; f <= hasta; f = sumarDias(f, 1)) {
+    m.diasPeriodo++
+    // un día sin datos (antes de usar la app) no cuenta como "todo libre"
+    if (!conDatos(f)) continue
+    m.dias++
     const dia = lunesPrimero(f)
     for (const h of c.horarios) {
       const celda = (m.porCelda[`${dia}|${h}`] ??= vacia())
@@ -111,11 +117,24 @@ export async function cargarEstadisticas(c: Complejo, periodo: Periodo): Promise
     for (const h of (data ?? []) as (HorarioDia & { fecha: string })[]) horarios.set(h.fecha, h)
   }
 
+  // días con datos: con ATC, los que se consultaron o tienen reservas; sin ATC, desde la primera reserva registrada
+  const fechasConReservas = new Set([...reservas].map((k) => k.slice(0, 10)))
+  const primera = [...fechasConReservas].sort()[0]
+  const conDatos = c.atc
+    ? (f: string) => horarios.has(f) || fechasConReservas.has(f)
+    : (f: string) => primera !== undefined && f >= primera
+
   return {
     desde, hasta, prevDesde, prevHasta,
-    actual: calcular(c, desde, hasta, reservas, horarios),
-    anterior: calcular(c, prevDesde, prevHasta, reservas, horarios),
+    actual: calcular(c, desde, hasta, reservas, horarios, conDatos),
+    anterior: calcular(c, prevDesde, prevHasta, reservas, horarios, conDatos),
   }
+}
+
+/** Las cantidades (turnos reservados) solo se comparan si los dos períodos tienen casi todos los días con datos */
+export function comparables(e: Estadisticas): boolean {
+  const lleno = (m: Metricas) => m.dias >= Math.ceil(m.diasPeriodo * 0.8)
+  return lleno(e.actual) && lleno(e.anterior)
 }
 
 export interface Conclusion { icono: string; fondo: string; texto: string } // texto con **negritas**

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { Complejo } from '../config/complejos'
 import { ddmm } from '../lib/fechas'
 import {
-  cargarEstadisticas, conclusiones, DIAS_CORTOS, DIAS_LARGOS, pct, puntos, variacion,
+  cargarEstadisticas, comparables, conclusiones, DIAS_CORTOS, DIAS_LARGOS, pct, puntos, variacion,
   type Celda, type Estadisticas, type Periodo,
 } from '../lib/estadisticas'
 
@@ -47,7 +47,7 @@ const ConNegritas = ({ t }: { t: string }) => (
 )
 
 export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) {
-  const [periodo, setPeriodo] = useState<Periodo>(7)
+  const [periodo, setPeriodo] = useState<Periodo>(15)
   const [datos, setDatos] = useState<Estadisticas | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -78,6 +78,8 @@ export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) 
   if (!datos) return <div className="space-y-3">{filtros}<p className="py-10 text-center text-tinta">Calculando estadísticas…</p></div>
 
   const { actual: a, anterior: b } = datos
+  const sinAnterior = b.dias === 0
+  const cantidadComparable = comparables(datos)
   if (!a.total.reservados && !b.total.reservados) {
     return <div className="space-y-3">{filtros}<p className="rounded-2xl border border-linea bg-white px-4 py-10 text-center text-tinta">Todavía no hay reservas registradas en este período.</p></div>
   }
@@ -107,6 +109,14 @@ export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) 
         <strong className="text-noche">{ddmm(datos.prevDesde)} al {ddmm(datos.prevHasta)}</strong>
         {cargando && ' · actualizando…'}
       </p>
+      {(sinAnterior || a.dias < a.diasPeriodo || b.dias < b.diasPeriodo) && (
+        <p className="-mt-2 text-xs text-tinta">
+          {a.dias < a.diasPeriodo && <>Con datos de <strong className="text-noche">{a.dias} de {a.diasPeriodo} días</strong>. </>}
+          {sinAnterior
+            ? 'Sin datos del período anterior para comparar.'
+            : b.dias < b.diasPeriodo && <>El período anterior tiene datos de <strong className="text-noche">{b.dias} de {b.diasPeriodo} días</strong>.</>}
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2.5">
         <Kpi titulo="Ocupación promedio" valor={<>{pct(a.total) ?? 0}<span className="text-lg text-tinta">%</span></>}>
@@ -114,8 +124,8 @@ export default function VistaEstadisticas({ complejo }: { complejo: Complejo }) 
           {pct(b.total) !== null && <span className="text-[11px] text-tinta">vs {pct(b.total)}%</span>}
         </Kpi>
         <Kpi titulo="Turnos reservados" valor={a.total.reservados}>
-          <Variacion v={variacion(a.total.reservados, b.total.reservados)} unidad="%" />
-          <span className="text-[11px] text-tinta">vs {b.total.reservados}</span>
+          <Variacion v={cantidadComparable ? variacion(a.total.reservados, b.total.reservados) : null} unidad="%" />
+          {cantidadComparable && <span className="text-[11px] text-tinta">vs {b.total.reservados}</span>}
         </Kpi>
         <Kpi titulo="Horario más pedido" valor={pico?.h ?? '—'}>
           {pico && <span className="rounded-full bg-niebla px-2 py-0.5 text-xs font-semibold text-tinta">{pico.p}% ocupado</span>}
