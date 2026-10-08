@@ -63,8 +63,8 @@ export default function Ayuda({ alCerrar, manual = true }: { alCerrar: () => voi
 
           <Seccion titulo="Elegir el día">
             {manual
-              ? <p>La app tiene tres pestañas: {b('Fijos')}, {b('Turnos')} (C1, C2 y C3) e {b('Imagen')}.</p>
-              : <p>La app tiene dos pestañas: {b('Turnos')} (C1, C2 y C3) e {b('Imagen')}.</p>}
+              ? <p>La app tiene cuatro pestañas: {b('Fijos')}, {b('Turnos')} (C1, C2 y C3), {b('Imagen')} y {b('Estadísticas')}.</p>
+              : <p>La app tiene tres pestañas: {b('Turnos')} (C1, C2 y C3), {b('Imagen')} y {b('Estadísticas')}.</p>}
             <p>Con las flechas ‹ › pasás al día anterior o al siguiente. Para ir a una fecha puntual, tocá la fecha y se abre el calendario. El botón {b('Hoy')} te vuelve al día actual.</p>
           </Seccion>
 
@@ -99,6 +99,12 @@ export default function Ayuda({ alCerrar, manual = true }: { alCerrar: () => voi
             <p>Para reservar, cancelar o bloquear un turno, hacelo en ATC: esta app solo muestra lo que hay allá.</p>
           </Seccion>
           )}
+
+          <Seccion titulo="Estadísticas">
+            <p>En la pestaña {b('Estadísticas')} ves cómo viene la ocupación de las canchas en los últimos {b('7, 15 o 30 días')} (15 por defecto), comparada con el período anterior del mismo largo.</p>
+            <p>Arriba tenés la ocupación promedio, los turnos reservados, el horario más pedido y el día más fuerte. Abajo, un mapa de día y horario, y el detalle por horario, por día y por cancha. Las variaciones de porcentaje van en puntos (de 52% a 58% son {b('6 pts')}).</p>
+            <p>La ocupación se calcula sobre los horarios en que el club abrió en ATC: si un día abre a las 15:00, la mañana no cuenta como vacía.</p>
+          </Seccion>
 
           <Seccion titulo="Compartir la imagen">
             <p>En la pestaña {b('Imagen')} está la imagen del día elegido, actualizada con la tabla. No hay que generarla: cambia sola con cada reserva.</p>

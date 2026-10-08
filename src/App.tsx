@@ -14,10 +14,11 @@ import { sincronizarFijos } from './lib/fijos'
 import { SesionVencida } from './lib/turnos'
 import Ayuda from './components/Ayuda'
 import BarraATC from './components/BarraATC'
+import VistaEstadisticas from './components/VistaEstadisticas'
 import { DialogoCambiosATC } from './components/DialogosTurno'
 import { useSincronizacionATC } from './lib/useATC'
 
-type Pestana = 'turnos' | 'fijos' | 'imagen'
+type Pestana = 'turnos' | 'fijos' | 'imagen' | 'estadisticas'
 // Siempre arranca en el primer complejo, pestaña Turnos, día de hoy
 const VISTA_INICIAL: { complejo: ComplejoId; pestana: Pestana } = { complejo: COMPLEJOS[0].id, pestana: 'turnos' }
 
@@ -82,7 +83,7 @@ function Principal({ sesion, alSalir, alVencer }: { sesion: Sesion; alSalir: () 
   // Si el complejo toma reservas por ATC, la tabla se mantiene igual a ATC sola
   const atc = useSincronizacionATC(complejo, fecha, sesion.token, alVencer, recargar)
   // Pestañas: sin reservas manuales no hay turnos fijos (el código queda, solo no se muestra)
-  const pestanas: Pestana[] = manual ? ['fijos', 'turnos', 'imagen'] : ['turnos', 'imagen']
+  const pestanas: Pestana[] = manual ? ['fijos', 'turnos', 'imagen', 'estadisticas'] : ['turnos', 'imagen', 'estadisticas']
 
   // Al abrir la app se reservan los fijos que entraron en la ventana de días (idempotente)
   useEffect(() => {
@@ -118,30 +119,32 @@ function Principal({ sesion, alSalir, alVencer }: { sesion: Sesion; alSalir: () 
       </header>
 
       <main className="mx-auto max-w-3xl space-y-4 px-4 pt-4">
-        {vista.pestana !== 'fijos' && <SelectorFecha fecha={fecha} onCambio={setFecha} />}
+        {vista.pestana !== 'fijos' && vista.pestana !== 'estadisticas' && <SelectorFecha fecha={fecha} onCambio={setFecha} />}
 
         {/* pestañas del módulo */}
-        <div className={`grid ${pestanas.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} rounded-xl bg-white p-1 border border-linea`} role="tablist">
+        <div className={`grid ${pestanas.length === 4 ? 'grid-cols-4' : pestanas.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} rounded-xl bg-white p-1 border border-linea`} role="tablist">
           {pestanas.map((p) => (
             <button key={p} role="tab" aria-selected={vista.pestana === p}
               onClick={() => setVista((v) => ({ ...v, pestana: p }))}
               className={`rounded-lg py-2.5 font-tablero text-xl font-bold ${
                 vista.pestana === p ? 'bg-escudo text-white' : 'text-tinta'}`}>
-              {p === 'turnos' ? 'Turnos' : p === 'fijos' ? 'Fijos' : 'Imagen'}
+              {p === 'turnos' ? 'Turnos' : p === 'fijos' ? 'Fijos' : p === 'imagen' ? 'Imagen' : 'Estadísticas'}
             </button>
           ))}
         </div>
 
-        {vista.pestana !== 'fijos' && <BarraATC atc={atc} fecha={fecha} soloErrores={vista.pestana === 'turnos'} />}
+        {(vista.pestana === 'turnos' || vista.pestana === 'imagen') && <BarraATC atc={atc} fecha={fecha} soloErrores={vista.pestana === 'turnos'} />}
 
-        {error && vista.pestana !== 'fijos' && (
+        {error && vista.pestana !== 'fijos' && vista.pestana !== 'estadisticas' && (
           <div className="flex items-center justify-between gap-3 rounded-xl bg-rojo/10 px-4 py-3 text-rojo">
             <span className="text-sm font-medium">{error}</span>
             <button onClick={recargar} className="shrink-0 text-sm font-bold underline">Reintentar</button>
           </div>
         )}
 
-        {vista.pestana === 'fijos' ? (
+        {vista.pestana === 'estadisticas' ? (
+          <VistaEstadisticas complejo={complejo} />
+        ) : vista.pestana === 'fijos' ? (
           <VistaFijos complejo={complejo} token={sesion.token} alVencerSesion={alVencer} />
         ) : cargando ? (
           <p className="py-16 text-center text-tinta">Cargando turnos…</p>

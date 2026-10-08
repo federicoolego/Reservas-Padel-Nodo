@@ -6,6 +6,7 @@ export const TABLA = {
   turnos: `${PREFIJO}_turnos`,
   contactos: `${PREFIJO}_contactos`,
   fijos: `${PREFIJO}_fijos`,
+  atcConsultas: `${PREFIJO}_atc_consultas`,
 } as const
 
 export const RPC = {

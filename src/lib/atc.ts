@@ -62,7 +62,11 @@ export async function sincronizarATC(token: string, c: Complejo, fecha: string):
   }
   if (!data || data.error) throw new Error(data?.error ?? 'No se pudo consultar ATC. Probá de nuevo en un rato.')
   const ocupados = ocupadosATC(c, data)
-  const { data: r, error: e } = await supabase.rpc(RPC.atcSincronizar, { p_token: token, p_fecha: fecha, p_ocupados: ocupados })
+  const { data: r, error: e } = await supabase.rpc(RPC.atcSincronizar, {
+    p_token: token, p_fecha: fecha, p_ocupados: ocupados,
+    // horario del club ese día: lo usan las estadísticas para no contar horarios cerrados
+    p_abierto: data.abierto, p_apertura: data.apertura, p_cierre: data.cierre,
+  })
   if (e) {
     if (e.code === '28000') throw new SesionVencida(e.message)
     if (e.code === '22023') throw new Error(e.message)

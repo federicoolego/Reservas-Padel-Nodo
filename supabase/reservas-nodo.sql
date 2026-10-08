@@ -634,11 +634,29 @@ create table if not exists public.reservas_nodo_atc_consultas (
   por     text
 );
 alter table public.reservas_nodo_atc_consultas enable row level security;
--- Sin políticas: solo se usa desde reservas_nodo_atc_sincronizar.
+
+-- Horario del club según ATC ese día (para las estadísticas: los horarios cerrados no cuentan)
+alter table public.reservas_nodo_atc_consultas add column if not exists abierto  boolean;
+alter table public.reservas_nodo_atc_consultas add column if not exists apertura text;
+alter table public.reservas_nodo_atc_consultas add column if not exists cierre   text;
+
+-- Lectura pública (solo fechas y horarios del club, que ya son públicos en ATC)
+drop policy if exists "reservas_nodo_atc_consultas lectura publica" on public.reservas_nodo_atc_consultas;
+create policy "reservas_nodo_atc_consultas lectura publica"
+  on public.reservas_nodo_atc_consultas for select to anon, authenticated using (true);
+grant select on table public.reservas_nodo_atc_consultas to anon, authenticated;
 
 -- Devuelve qué turnos marcó y cuáles liberó ('cancha|hora', ordenados por hora) y cuándo fue la consulta anterior
 drop function if exists public.reservas_nodo_atc_sincronizar(uuid, date, text[]);
-create function public.reservas_nodo_atc_sincronizar(p_token uuid, p_fecha date, p_ocupados text[])
+drop function if exists public.reservas_nodo_atc_sincronizar(uuid, date, text[], boolean, text, text);
+create function public.reservas_nodo_atc_sincronizar(
+  p_token    uuid,
+  p_fecha    date,
+  p_ocupados text[],
+  p_abierto  boolean default null,  -- horario del club que informa ATC ese día
+  p_apertura text default null,
+  p_cierre   text default null
+)
 returns table (marcados text[], liberados text[], anterior timestamptz)
 language plpgsql
 security definer
@@ -688,9 +706,15 @@ begin
 
   -- registrar esta consulta y devolver la anterior
   select c.ultima into v_ant from public.reservas_nodo_atc_consultas c where c.fecha = p_fecha;
-  insert into public.reservas_nodo_atc_consultas (fecha, ultima, por)
-  values (p_fecha, now(), v_nombre)
-  on conflict (fecha) do update set ultima = excluded.ultima, por = excluded.por;
+  insert into public.reservas_nodo_atc_consultas (fecha, ultima, por, abierto, apertura, cierre)
+  values (p_fecha, now(), v_nombre, p_abierto,
+          case when p_apertura ~ '^[0-2][0-9]:[0-5][0-9]$' then p_apertura end,
+          case when p_cierre   ~ '^[0-2][0-9]:[0-5][0-9]$' then p_cierre end)
+  on conflict (fecha) do update
+     set ultima = excluded.ultima, por = excluded.por,
+         abierto  = coalesce(excluded.abierto,  public.reservas_nodo_atc_consultas.abierto),
+         apertura = coalesce(excluded.apertura, public.reservas_nodo_atc_consultas.apertura),
+         cierre   = coalesce(excluded.cierre,   public.reservas_nodo_atc_consultas.cierre);
   delete from public.reservas_nodo_atc_consultas where fecha < public.reservas_nodo__hoy() - public.reservas_nodo__dias_historia();
 
   -- limpieza de turnos viejos (en NODO no se reserva a mano, así que set_estado ya no la hace)
@@ -722,7 +746,7 @@ revoke all on function public.reservas_nodo_contacto_mover(uuid, uuid, int)     
 revoke all on function public.reservas_nodo_fijos_sincronizar(uuid)                                              from public;
 revoke all on function public.reservas_nodo_fijo_previsualizar(text, text[], text, smallint, text, date, date, uuid) from public;
 revoke all on function public.reservas_nodo_fijo_guardar(uuid, uuid, text, text, smallint, text, text, date, date)  from public;
-revoke all on function public.reservas_nodo_atc_sincronizar(uuid, date, text[])                       from public;
+revoke all on function public.reservas_nodo_atc_sincronizar(uuid, date, text[], boolean, text, text)  from public;
 revoke all on function public.reservas_nodo_fijo_eliminar(uuid, uuid)                                            from public;
 
 grant execute on function public.reservas_nodo_login(text, text, text)                                              to anon, authenticated;
@@ -735,7 +759,7 @@ grant execute on function public.reservas_nodo_contacto_mover(uuid, uuid, int)  
 grant execute on function public.reservas_nodo_fijos_sincronizar(uuid)                                              to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_previsualizar(text, text[], text, smallint, text, date, date, uuid) to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_guardar(uuid, uuid, text, text, smallint, text, text, date, date)  to anon, authenticated;
-grant execute on function public.reservas_nodo_atc_sincronizar(uuid, date, text[])                       to anon, authenticated;
+grant execute on function public.reservas_nodo_atc_sincronizar(uuid, date, text[], boolean, text, text)  to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_eliminar(uuid, uuid)                                            to anon, authenticated;
 
 -- ---------------------------------------------------------------------
