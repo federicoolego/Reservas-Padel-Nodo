@@ -45,8 +45,10 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       const r = await sincronizarATC(token, complejo, f)
       if (f !== fechaActual.current) return // cambiaron de día mientras tanto
       setResultado(r)
-      // Popup de cambios solo cuando se toca el botón "Actualizar"; las automáticas no interrumpen
-      if (informar) setInforme(r)
+      // Popup de cambios desactivado: alcanza con "Actualizado: ..." junto a la tabla.
+      // Para volver a mostrarlo al tocar "Actualizar", descomentar la línea de abajo.
+      // if (informar) setInforme(r)
+      void informar
       setUltima(new Date().toISOString())
       setError(null)
       ultimaMs.current = Date.now()
