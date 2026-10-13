@@ -31,7 +31,7 @@ export interface Estadisticas {
   anterior: Metricas
 }
 
-interface HorarioDia { abierto: boolean | null; apertura: string | null; cierre: string | null }
+interface HorarioDia { abierto: boolean | null; apertura: string | null; cierre: string | null; primera?: string | null }
 
 const min = (h: string) => Number(h.slice(0, 2)) * 60 + Number(h.slice(3, 5))
 const vacia = (): Celda => ({ reservados: 0, disponibles: 0 })
@@ -74,8 +74,12 @@ function calcular(c: Complejo, desde: string, hasta: string, reservas: Set<strin
       const reservadasAca = c.canchas.filter((ca) => reservas.has(`${f}|${ca}|${h}`))
       // si hubo una reserva, el turno estaba habilitado aunque falte el horario de ATC
       if (!habilitado(h, horarios.get(f)) && reservadasAca.length === 0) continue
+      // turnos que ya habían empezado cuando se consultó ATC por primera vez ese día: sin dato, no cuentan
+      const primera = horarios.get(f)?.primera
+      const sinDato = !!primera && Date.parse(`${f}T${h}:00-03:00`) < Date.parse(primera)
       for (const ca of c.canchas) {
         const r = reservadasAca.includes(ca) ? 1 : 0
+        if (sinDato && !r) continue
         for (const x of [m.total, m.porHora[h], m.porDia[dia], celda, m.porCancha[ca]]) {
           x.disponibles += 1
           x.reservados += r
@@ -113,7 +117,7 @@ export async function cargarEstadisticas(c: Complejo, periodo: Periodo): Promise
   // horario del club según ATC (si el complejo usa ATC)
   const horarios = new Map<string, HorarioDia>()
   if (c.atc) {
-    const { data } = await supabase.from(TABLA.atcConsultas).select('fecha, abierto, apertura, cierre').gte('fecha', prevDesde).lte('fecha', hasta)
+    const { data } = await supabase.from(TABLA.atcConsultas).select('fecha, abierto, apertura, cierre, primera').gte('fecha', prevDesde).lte('fecha', hasta)
     for (const h of (data ?? []) as (HorarioDia & { fecha: string })[]) horarios.set(h.fecha, h)
   }
 

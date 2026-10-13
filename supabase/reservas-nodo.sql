@@ -639,6 +639,8 @@ alter table public.reservas_nodo_atc_consultas enable row level security;
 alter table public.reservas_nodo_atc_consultas add column if not exists abierto  boolean;
 alter table public.reservas_nodo_atc_consultas add column if not exists apertura text;
 alter table public.reservas_nodo_atc_consultas add column if not exists cierre   text;
+-- desde cuándo hay datos de ATC para ese día (lo anterior, de turnos que ya habían empezado, es "sin dato")
+alter table public.reservas_nodo_atc_consultas add column if not exists primera  timestamptz;
 
 -- Lectura pública (solo fechas y horarios del club, que ya son públicos en ATC)
 drop policy if exists "reservas_nodo_atc_consultas lectura publica" on public.reservas_nodo_atc_consultas;
@@ -649,8 +651,9 @@ grant select on table public.reservas_nodo_atc_consultas to anon, authenticated;
 -- Devuelve qué turnos marcó y cuáles liberó ('cancha|hora', ordenados por hora) y cuándo fue la consulta anterior
 drop function if exists public.reservas_nodo_atc_sincronizar(uuid, date, text[]);
 drop function if exists public.reservas_nodo_atc_sincronizar(uuid, date, text[], boolean, text, text);
-create function public.reservas_nodo_atc_sincronizar(
-  p_token    uuid,
+drop function if exists public.reservas_nodo__atc_aplicar(text, date, text[], boolean, text, text);
+create function public.reservas_nodo__atc_aplicar(
+  p_por      text,
   p_fecha    date,
   p_ocupados text[],
   p_abierto  boolean default null,  -- horario del club que informa ATC ese día
@@ -663,7 +666,7 @@ security definer
 set search_path = public
 as $$
 declare
-  v_nombre text := public.reservas_nodo__sesion(p_token);
+  v_nombre text := p_por;
   v_ocup   text[] := coalesce(p_ocupados, '{}');
   v_m      text[];
   v_l      text[];
@@ -706,12 +709,13 @@ begin
 
   -- registrar esta consulta y devolver la anterior
   select c.ultima into v_ant from public.reservas_nodo_atc_consultas c where c.fecha = p_fecha;
-  insert into public.reservas_nodo_atc_consultas (fecha, ultima, por, abierto, apertura, cierre)
-  values (p_fecha, now(), v_nombre, p_abierto,
+  insert into public.reservas_nodo_atc_consultas (fecha, ultima, primera, por, abierto, apertura, cierre)
+  values (p_fecha, now(), now(), v_nombre, p_abierto,
           case when p_apertura ~ '^[0-2][0-9]:[0-5][0-9]$' then p_apertura end,
           case when p_cierre   ~ '^[0-2][0-9]:[0-5][0-9]$' then p_cierre end)
   on conflict (fecha) do update
      set ultima = excluded.ultima, por = excluded.por,
+         primera  = coalesce(public.reservas_nodo_atc_consultas.primera, excluded.primera),
          abierto  = coalesce(excluded.abierto,  public.reservas_nodo_atc_consultas.abierto),
          apertura = coalesce(excluded.apertura, public.reservas_nodo_atc_consultas.apertura),
          cierre   = coalesce(excluded.cierre,   public.reservas_nodo_atc_consultas.cierre);
@@ -721,6 +725,47 @@ begin
   delete from public.reservas_nodo_turnos where fecha < public.reservas_nodo__hoy() - public.reservas_nodo__dias_historia();
 
   return query select v_m, v_l, v_ant;
+end;
+$$;
+
+-- La que usa la app (con la sesión de quien está logueado)
+drop function if exists public.reservas_nodo_atc_sincronizar(uuid, date, text[], boolean, text, text);
+create function public.reservas_nodo_atc_sincronizar(
+  p_token    uuid,
+  p_fecha    date,
+  p_ocupados text[],
+  p_abierto  boolean default null,
+  p_apertura text default null,
+  p_cierre   text default null
+)
+returns table (marcados text[], liberados text[], anterior timestamptz)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query select * from public.reservas_nodo__atc_aplicar(
+    public.reservas_nodo__sesion(p_token), p_fecha, p_ocupados, p_abierto, p_apertura, p_cierre);
+end;
+$$;
+
+-- La que usa la sincronización automática (Supabase Cron -> Edge Function atc-nodo).
+-- Solo la puede ejecutar el servidor (service_role), nunca la app.
+drop function if exists public.reservas_nodo_atc_sincronizar_servicio(date, text[], boolean, text, text);
+create function public.reservas_nodo_atc_sincronizar_servicio(
+  p_fecha    date,
+  p_ocupados text[],
+  p_abierto  boolean default null,
+  p_apertura text default null,
+  p_cierre   text default null
+)
+returns table (marcados text[], liberados text[], anterior timestamptz)
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query select * from public.reservas_nodo__atc_aplicar('ATC (automático)', p_fecha, p_ocupados, p_abierto, p_apertura, p_cierre);
 end;
 $$;
 
@@ -760,6 +805,9 @@ grant execute on function public.reservas_nodo_fijos_sincronizar(uuid)          
 grant execute on function public.reservas_nodo_fijo_previsualizar(text, text[], text, smallint, text, date, date, uuid) to anon, authenticated;
 grant execute on function public.reservas_nodo_fijo_guardar(uuid, uuid, text, text, smallint, text, text, date, date)  to anon, authenticated;
 grant execute on function public.reservas_nodo_atc_sincronizar(uuid, date, text[], boolean, text, text)  to anon, authenticated;
+revoke all on function public.reservas_nodo__atc_aplicar(text, date, text[], boolean, text, text) from public, anon, authenticated;
+revoke all on function public.reservas_nodo_atc_sincronizar_servicio(date, text[], boolean, text, text) from public, anon, authenticated;
+grant execute on function public.reservas_nodo_atc_sincronizar_servicio(date, text[], boolean, text, text) to service_role;
 grant execute on function public.reservas_nodo_fijo_eliminar(uuid, uuid)                                            to anon, authenticated;
 
 -- ---------------------------------------------------------------------

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { supabase } from './supabase'
+import { TABLA } from '../config/db'
 import type { Complejo } from '../config/complejos'
 import { esPasado } from '../config/limites'
 import { sincronizarATC, type ResultadoATC } from './atc'
@@ -15,6 +17,7 @@ export interface EstadoATC {
   error: string | null
   actualizar: (opciones?: { informar?: boolean }) => void
   informe: ResultadoATC | null // resultado a mostrar en el popup de cambios
+  primera: string | null | undefined // desde cuándo hay datos de ATC de ese día (undefined: cargando)
   cerrarInforme: () => void
 }
 
@@ -29,12 +32,20 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
   const [resultado, setResultado] = useState<ResultadoATC | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [informe, setInforme] = useState<ResultadoATC | null>(null)
+  const [primera, setPrimera] = useState<string | null | undefined>(undefined)
   const enCurso = useRef(false)
   const ultimaMs = useRef(0)
   const fechaActual = useRef(fecha)
   fechaActual.current = fecha
   const callbacks = useRef({ alVencer, alTerminar })
   callbacks.current = { alVencer, alTerminar }
+
+  // desde cuándo hay datos de ATC del día (los turnos que empezaron antes son "sin dato")
+  const cargarPrimera = useCallback(async (f: string) => {
+    if (!activo) return
+    const { data } = await supabase.from(TABLA.atcConsultas).select('primera').eq('fecha', f).maybeSingle()
+    if (f === fechaActual.current) setPrimera((data as { primera: string | null } | null)?.primera ?? null)
+  }, [activo])
 
   const actualizar = useCallback(async ({ informar = false }: { informar?: boolean } = {}) => {
     const f = fechaActual.current
@@ -50,6 +61,7 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       // if (informar) setInforme(r)
       void informar
       setUltima(new Date().toISOString())
+      cargarPrimera(f)
       setError(null)
       ultimaMs.current = Date.now()
       callbacks.current.alTerminar?.()
@@ -60,15 +72,17 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
       enCurso.current = false
       setConsultando(false)
     }
-  }, [activo, complejo, token])
+  }, [activo, complejo, token, cargarPrimera])
 
   // al abrir (o refrescar) y cada vez que cambia el día
   useEffect(() => {
     setResultado(null)
     setUltima(null)
     setError(null)
+    setPrimera(undefined)
+    cargarPrimera(fecha)
     actualizar()
-  }, [fecha, actualizar])
+  }, [fecha, actualizar, cargarPrimera])
 
   // cada 5 minutos, y al volver a la app
   useEffect(() => {
@@ -84,5 +98,5 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     }
   }, [activo, actualizar])
 
-  return { activo, consultando, ultima, resultado, error, actualizar, informe, cerrarInforme: () => setInforme(null) }
+  return { activo, consultando, ultima, resultado, error, actualizar, informe, cerrarInforme: () => setInforme(null), primera }
 }

@@ -19,6 +19,8 @@ interface Props {
   atc?: EstadoATC // si el complejo toma reservas por ATC: "Actualizado" es la última consulta a ATC
 }
 
+export const MENSAJE_SIN_DATO = 'Sin dato: cuando se consultó ATC este turno ya había empezado, y ATC no informa los turnos que ya empezaron.'
+
 export const MENSAJE_ATC = 'Las reservas se toman en ATC. La tabla se actualiza sola desde ATC.'
 
 interface Aviso {
@@ -85,8 +87,20 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
   const esHoy = fecha === hoyISO()
   const pasado = esPasado(fecha)
 
+  // "Sin dato": turno de hoy o de un día pasado que ya había empezado cuando se consultó ATC por primera
+  // vez ese día (ATC no publica los turnos que empezaron, así que no se sabe si estuvo reservado)
+  const ahoraMs = Date.now()
+  function sinDato(cancha: string, hora: string): boolean {
+    if (!atc?.activo || atc.primera === undefined) return false
+    if (turnos[claveTurno(cancha, hora)]?.estado === 'reservada') return false
+    const inicio = Date.parse(`${fecha}T${hora}:00-03:00`)
+    if (inicio > ahoraMs) return false
+    return atc.primera === null || inicio < Date.parse(atc.primera)
+  }
+
   // día pasado: lo libre avisa; lo reservado abre el detalle en solo lectura
   function tocar(cancha: string, hora: string) {
+    if (sinDato(cancha, hora)) return mostrar({ texto: MENSAJE_SIN_DATO })
     const reservada = turnos[claveTurno(cancha, hora)]?.estado === 'reservada'
     if (pasado && !reservada) return mostrar({ texto: MENSAJE_PASADO, error: true })
     if (soloLectura && !reservada) return mostrar({ texto: MENSAJE_ATC })
@@ -103,6 +117,8 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
   const total = complejo.canchas.length * complejo.horarios.length
   const reservadas = complejo.canchas.reduce(
     (s, c) => s + complejo.horarios.filter((h) => turnos[claveTurno(c, h)]?.estado === 'reservada').length, 0)
+  const sinDatos = complejo.canchas.reduce((s, c) => s + complejo.horarios.filter((h) => sinDato(c, h)).length, 0)
+  const textoSinDato = sinDatos ? <> · <strong className="text-noche">{sinDatos}</strong> sin dato</> : null
 
   return (
     <div>
@@ -111,12 +127,12 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
           {pasado ? (
             <p className="rounded-xl bg-noche/5 px-3 py-2 text-sm text-tinta">
               <strong className="text-noche">Día pasado: solo consulta.</strong>{' '}
-              <strong className="text-noche">{reservadas}</strong> reservado{reservadas === 1 ? '' : 's'} de {total}. Tocá un turno reservado para ver el detalle.
+              <strong className="text-noche">{reservadas}</strong> reservado{reservadas === 1 ? '' : 's'} de {total}{textoSinDato}. Tocá un turno reservado para ver el detalle.
             </p>
           ) : (
             <p className="text-sm text-tinta">
               <strong className="text-noche">{reservadas}</strong> reservado{reservadas === 1 ? '' : 's'} y{' '}
-              <strong className="text-noche">{total - reservadas}</strong> libre{total - reservadas === 1 ? '' : 's'} de {total}.{' '}
+              <strong className="text-noche">{total - reservadas - sinDatos}</strong> libre{total - reservadas - sinDatos === 1 ? '' : 's'} de {total}{textoSinDato}.{' '}
               {soloLectura ? 'Tocá un turno ocupado para ver el detalle.' : 'Tocá un turno libre para reservarlo, o uno reservado para ver el detalle.'}
             </p>
           )}
@@ -151,6 +167,17 @@ export default function TablaTurnos({ complejo, fecha, turnos, token, aplicarLoc
                     const t = turnos[k]
                     const reservada = t?.estado === 'reservada'
                     const deATC = reservada && t?.origen === 'atc'
+                    if (sinDato(c, h)) {
+                      return (
+                        <td key={c} className="p-1">
+                          <button onClick={() => tocar(c, h)} aria-label={`${h} ${c}: sin dato`}
+                            className="flex h-14 w-full min-w-[64px] flex-col items-center justify-center rounded-xl border border-dashed border-tinta/40 bg-niebla text-tinta opacity-80">
+                            <span className="font-tablero text-base font-bold leading-none">Sin dato</span>
+                            <span className="mt-1 text-[11px] leading-none">ya había empezado</span>
+                          </button>
+                        </td>
+                      )
+                    }
                     const pendiente = pendientes.has(k)
                     return (
                       <td key={c} className="p-1">
