@@ -42,8 +42,12 @@ En NODO **la fuente de reservas es ATC** (atcsports.io). La app consulta la disp
 para el día que se está viendo y marca **Ocupado - ATC** los turnos que allá no están libres (columna `origen = 'atc'`).
 ATC no informa para quién es la reserva.
 
-- La app consulta ATC al abrir, al cambiar de día y al volver a la app si pasaron más de 15 minutos
-  (`src/lib/useATC.ts`). No hay refresco periódico. El botón **Actualizar** fuerza la consulta.
+- La app **no consulta ATC sola** (ni al abrir, ni al cambiar de día, ni cada x tiempo): solo con el botón
+  **Actualizar** (`src/lib/useATC.ts`). Al abrir / cambiar de día lee de `reservas_nodo_atc_consultas` la última
+  actualización del día y la muestra en "Actualizado: ...". Los días futuros solo se actualizan con el botón.
+- Las apps abiertas se enteran solas de cada sincronización (cron o botón) por **Realtime**: los turnos por
+  `reservas_nodo_turnos` y la hora de "Actualizado" por `reservas_nodo_atc_consultas`
+  (`supabase/migracion-nodo-009-realtime-atc-consultas.sql`). Sin polling.
 - **Sincronización automática** (Supabase Cron → Edge Function `atc-nodo`): corre **5 minutos antes de cada turno**
   (jobs `nodo-atc-pre-turno-55` y `nodo-atc-pre-turno-25`, ver `supabase/migracion-nodo-008-cron-pre-turno.sql`).
   Las expresiones están en **UTC** (Argentina = UTC-3). **Si cambian los horarios**, actualizar en los tres lugares:

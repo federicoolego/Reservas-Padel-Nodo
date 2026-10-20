@@ -5,7 +5,8 @@ import { textoActualizado } from '../lib/fechas'
 
 const AYUDA_ATC =
   'Trae de ATC los turnos ocupados del día que estás viendo. ' +
-  'La tabla también se actualiza sola: al abrir la app, al cambiar de día y al volver a la pestaña (si pasaron más de 15 minutos).'
+  'Además, el sistema actualiza el día de hoy solo, 5 minutos antes de cada turno. ' +
+  'Para consultar ATC en el momento, tocá Actualizar.'
 
 function IconoActualizar({ girando }: { girando: boolean }) {
   return (
@@ -75,7 +76,7 @@ export default function BarraATC({ atc, fecha, soloErrores = false }: { atc: Est
       <span className="flex-1 text-sm">
         {atc.ultima
           ? <>Actualizado: <strong className="font-semibold">{textoActualizado(atc.ultima, 'ATC')}</strong></>
-          : 'Consultando reservas en ATC…'}
+          : atc.consultando ? 'Consultando reservas en ATC…' : 'Sin actualizar todavía. Tocá Actualizar.'}
         <InfoATC />
       </span>
       <BotonATC atc={atc} />
