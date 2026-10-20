@@ -8,7 +8,7 @@
 // Entrada:  POST { "fecha": "YYYY-MM-DD" }
 // Salida:   { fecha, abierto, apertura, cierre, fuente, canchas: [{ id, nombre, libres: ["15:00", ...] }] }
 //
-// Modo sincronizar (lo dispara Supabase Cron cada 10 minutos):
+// Modo sincronizar (lo dispara Supabase Cron 5 minutos antes de cada turno, ver migración 008):
 //   POST { "sincronizar": true } con el header x-cron-secret = secreto ATC_CRON_SECRET.
 //   Consulta ATC para HOY y guarda en la base los turnos ocupados, aunque nadie tenga la app
 //   abierta, así cada turno queda registrado antes de empezar.

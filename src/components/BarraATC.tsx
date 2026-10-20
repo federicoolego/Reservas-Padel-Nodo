@@ -5,7 +5,7 @@ import { textoActualizado } from '../lib/fechas'
 
 const AYUDA_ATC =
   'Trae de ATC los turnos ocupados del día que estás viendo. ' +
-  'La tabla también se actualiza sola: al abrir la app, al cambiar de día, cada 5 minutos y al volver a la pestaña.'
+  'La tabla también se actualiza sola: al abrir la app, al cambiar de día y al volver a la pestaña (si pasaron más de 15 minutos).'
 
 function IconoActualizar({ girando }: { girando: boolean }) {
   return (

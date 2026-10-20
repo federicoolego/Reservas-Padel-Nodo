@@ -93,9 +93,9 @@ export default function Ayuda({ alCerrar, manual = true }: { alCerrar: () => voi
           </Seccion>
           ) : (
           <Seccion titulo="Reservas de ATC">
-            <p>Además, el sistema consulta ATC solo cada 10 minutos de 8 a 23 hs, aunque nadie tenga la app abierta, así cada turno queda registrado antes de empezar.</p>
+            <p>Además, el sistema consulta ATC solo 5 minutos antes de cada turno, aunque nadie tenga la app abierta, así cada turno queda registrado antes de empezar.</p>
             <p>Si un turno de hoy aparece como {b('Sin dato')}, es porque ya había empezado cuando se consultó ATC por primera vez ese día: ATC no informa los turnos que ya empezaron, así que no se sabe si estuvo reservado. No cuenta en las estadísticas.</p>
-            <p>La tabla se actualiza sola desde ATC: al abrir la app, al cambiar de día, cada 5 minutos y cuando volvés a la app. Arriba de la tabla ves cuántos turnos están ocupados y a qué hora fue la última actualización.</p>
+            <p>La tabla se actualiza sola desde ATC: al abrir la app, al cambiar de día y cuando volvés a la app (si pasaron más de 15 minutos). Arriba de la tabla ves cuántos turnos están ocupados y a qué hora fue la última actualización.</p>
             <p>Si querés actualizar en el momento (por ejemplo, justo antes de compartir la imagen), tocá {b('Actualizar')}. Al lado de {b('Actualizado')} tenés el ícono {b('i')} con esta misma explicación.</p>
             <p>Los turnos tomados en ATC se ven como {b('Ocupado · ATC')} y salen con pelotita en la imagen. ATC no informa para quién es la reserva. Si una reserva se cancela en ATC, en la próxima actualización el turno vuelve a quedar libre.</p>
             <p>Para reservar, cancelar o bloquear un turno, hacelo en ATC: esta app solo muestra lo que hay allá.</p>

@@ -42,8 +42,12 @@ En NODO **la fuente de reservas es ATC** (atcsports.io). La app consulta la disp
 para el día que se está viendo y marca **Ocupado - ATC** los turnos que allá no están libres (columna `origen = 'atc'`).
 ATC no informa para quién es la reserva.
 
-- Se actualiza sola: al abrir la app, al cambiar de día, cada 5 minutos y al volver a la app (`src/lib/useATC.ts`).
-  El botón **Reservas ATC** fuerza la actualización.
+- La app consulta ATC al abrir, al cambiar de día y al volver a la app si pasaron más de 15 minutos
+  (`src/lib/useATC.ts`). No hay refresco periódico. El botón **Actualizar** fuerza la consulta.
+- **Sincronización automática** (Supabase Cron → Edge Function `atc-nodo`): corre **5 minutos antes de cada turno**
+  (jobs `nodo-atc-pre-turno-55` y `nodo-atc-pre-turno-25`, ver `supabase/migracion-nodo-008-cron-pre-turno.sql`).
+  Las expresiones están en **UTC** (Argentina = UTC-3). **Si cambian los horarios**, actualizar en los tres lugares:
+  `src/config/complejos.ts`, `HORARIOS` en la Edge Function y los jobs de la migración 008.
 - La tabla es de **solo lectura** y la pestaña **Fijos** no se muestra: `reservasManuales: false` en
   `src/config/complejos.ts`. Con `true` vuelve todo (reservar/liberar a mano y turnos fijos); el código está intacto.
 

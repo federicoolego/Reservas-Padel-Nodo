@@ -6,8 +6,8 @@ import { esPasado } from '../config/limites'
 import { sincronizarATC, type ResultadoATC } from './atc'
 import { SesionVencida } from './turnos'
 
-const CADA = 5 * 60 * 1000 // refresco automático mientras la app está abierta
-const AL_VOLVER = 2 * 60 * 1000 // al volver a la app, si pasó más que esto desde la última consulta
+// Sin refresco periódico: la base se mantiene sola con Supabase Cron (5' antes de cada turno).
+const AL_VOLVER = 15 * 60 * 1000 // al volver a la app, si pasó más que esto desde la última consulta
 
 export interface EstadoATC {
   activo: boolean // el complejo toma reservas por ATC
@@ -23,7 +23,8 @@ export interface EstadoATC {
 
 /**
  * Mantiene la tabla igual a ATC para el día que se está viendo: consulta al abrir, al cambiar de día,
- * cada 5 minutos y al volver a la app. Los días pasados no se consultan (son de solo lectura).
+ * al tocar "Actualizar" y al volver a la app (si pasaron más de 15 minutos). Los días pasados no se
+ * consultan (son de solo lectura).
  */
 export function useSincronizacionATC(complejo: Complejo, fecha: string, token: string, alVencer: () => void, alTerminar?: () => void): EstadoATC {
   const activo = Boolean(complejo.atc)
@@ -84,18 +85,14 @@ export function useSincronizacionATC(complejo: Complejo, fecha: string, token: s
     actualizar()
   }, [fecha, actualizar, cargarPrimera])
 
-  // cada 5 minutos, y al volver a la app
+  // al volver a la app (sin polling periódico)
   useEffect(() => {
     if (!activo) return
-    const t = window.setInterval(() => document.visibilityState === 'visible' && actualizar(), CADA)
     const alVolver = () => {
       if (document.visibilityState === 'visible' && Date.now() - ultimaMs.current > AL_VOLVER) actualizar()
     }
     document.addEventListener('visibilitychange', alVolver)
-    return () => {
-      window.clearInterval(t)
-      document.removeEventListener('visibilitychange', alVolver)
-    }
+    return () => document.removeEventListener('visibilitychange', alVolver)
   }, [activo, actualizar])
 
   return { activo, consultando, ultima, resultado, error, actualizar, informe, cerrarInforme: () => setInforme(null), primera }
