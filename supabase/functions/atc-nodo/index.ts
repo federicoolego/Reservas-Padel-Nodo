@@ -96,7 +96,7 @@ async function desdeWeb(fecha: string): Promise<Json> {
 // Sincronización automática
 // IMPORTANTE: mantener HORARIOS y CANCHAS iguales a src/config/complejos.ts
 // ---------------------------------------------------------------------
-const HORARIOS = ['09:00', '10:30', '12:00', '13:30', '15:00', '16:30', '18:00', '19:30', '21:00']
+const HORARIOS = ['07:30', '09:00', '10:30', '12:00', '13:30', '15:00', '16:30', '18:00', '19:30', '21:00', '22:30']
 const CANCHAS: Record<string, string> = { '6261': 'C1', '6262': 'C2', '6263': 'C3' } // id en ATC -> cancha en la app
 const DURACION = 90
 
